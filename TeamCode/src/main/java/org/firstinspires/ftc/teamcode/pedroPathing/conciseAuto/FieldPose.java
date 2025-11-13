@@ -96,10 +96,16 @@ public class FieldPose {
     public static final Pose A1r45 = new Pose(getX(1), getY(1), Heading_NE); // (12.0, 12.0, 0.0)
 
     public static final Pose redDepot = new Pose(getX(6) - 8, getY(6) - 8, Heading_NE); // (12.0, 12.0, 0.0)
-    public static final Pose redShoot = new Pose(getX(4) , getY(4) , Heading_NE); // (12.0, 12.0, 0.0)
-    public static final Pose redGreen = new Pose(getX(5) , getY(4) , Heading_E); // (12.0, 12.0, 0.0)
-    public static final Pose redBarney = new Pose(getX(4) , getY(3) , Heading_E); // (12.0, 12.0, 0.0)
-    public static final Pose redPurple = new Pose(getX(3) , getY(2) + 12, Heading_E); // (12.0, 12.0, 0.0)
+    public static final Pose blueDepot = new Pose(16, getY(6) - 8, Heading_NW);
+    //public static final Pose redShoot = new Pose(getX(4) , getY(4) , Heading_NE); // (12.0, 12.0, 0.0)
+    //public static final Pose redGreen = new Pose(getX(5) , getY(4) , Heading_E); // (12.0, 12.0, 0.0)
+    //public static final Pose redBarney = new Pose(getX(4) , getY(3) , Heading_E); // (12.0, 12.0, 0.0)
+    //public static final Pose redPurple = new Pose(getX(3) , getY(2) + 12, Heading_E); // (12.0, 12.0, 0.0)
+    public static final Pose redFourCorners = new Pose(getX(4) + 12, get&(4) + 12, Heading_NE);
+    public static final Pose blueFourCorners = new Pose(getX(2) + 12, getY(4) + 12, Heading_NW)
+    public static final Pose Gert = new Pose(getX(5) + 2, getY(4), Heading_E);
+    public static final Pose Mule = new Pose(getX(2) - 2, getY(4) + 12, Heading_W);
+
 
 
 }

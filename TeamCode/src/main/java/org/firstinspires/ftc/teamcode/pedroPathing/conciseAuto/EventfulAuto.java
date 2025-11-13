@@ -30,7 +30,7 @@ public class EventfulAuto extends OpMode {
         // Initialize the follower and field paths
         follower = Constants.createFollower(hardwareMap);
         FieldPaths.initializePaths(follower);
-        follower.setStartingPose(CENTER);
+        follower.setStartingPose(redDepot);
 
         // Initialize the FieldEvent class with the hardware map
         FieldEvent.initialize(hardwareMap);
@@ -51,11 +51,8 @@ public class EventfulAuto extends OpMode {
 */
 
         pathSequence = new PathAndEvent[]{
-                new PathAndEvent(redDepotShoot, Event.NULL),
-                new PathAndEvent(redShootBarney, Event.NULL),
-                new PathAndEvent(redBarneyShoot, Event.NULL),
-                new PathAndEvent(redShootGreen, Event.NULL),
-                new PathAndEvent(redGreenShoot, Event.NULL)
+                new PathAndEvent(Colorado, Event.NULL),
+                new PathAndEvent(NewMexico, Event.NULL)
 
         };
 

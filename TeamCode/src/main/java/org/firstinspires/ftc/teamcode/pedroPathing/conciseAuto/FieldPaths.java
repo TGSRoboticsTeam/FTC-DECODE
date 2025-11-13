@@ -107,7 +107,7 @@ public class FieldPaths {
         CENTER_F5 = buildLineChain(CENTER, F5, CENTER.getHeading(), F5.getHeading());
 
         //GamePaths Red
-        redDepotShoot = buildLineChain(redDepot, redShoot, redDepot.getHeading(), redShoot.getHeading());
+       /** redDepotShoot = buildLineChain(redDepot, redShoot, redDepot.getHeading(), redShoot.getHeading());
         redShootBarney = buildLineChain(redShoot, redBarney, redShoot.getHeading(), redBarney.getHeading());
         redBarneyShoot = buildLineChain(redBarney, redShoot, redBarney.getHeading(), redShoot.getHeading());
         redShootGreen = buildLineChain(redShoot, redGreen, redShoot.getHeading(), redGreen.getHeading());
@@ -115,7 +115,13 @@ public class FieldPaths {
         redShootPurple = buildLineChain(redShoot, redPurple, redShoot.getHeading(), redPurple.getHeading());
         redPurpleShoot = buildLineChain(redPurple, redShoot, redPurple.getHeading(), redShoot.getHeading());
         redShootCenter = buildLineChain(redShoot, CENTER, redShoot.getHeading(), CENTER.getHeading());
-        // NOTE: Add the remaining 32 tiles to/from CENTER here.
+        // NOTE: Add the remaining 32 tiles to/from CENTER here.*/
+
+       Colorado = buildLineChain(redDepot, redFourCorners, redDepot.getHeading(), redFourCorners.getHeading());
+       NewMexico = buildLineChain(redFourCorners, Gert, redFourCorners.getHeading(), Gert.getHeading());
+
+       Utah = buildLineChain(blueDepot, blueFourCorners, blueDepot.getHeading(), blueFourCorners.getHeading());
+       Arizona = buildLineChain(blueFourCorners, Mule, blueFourCorners.getHeading, Mule.getHeading);
     }
 
     /**
