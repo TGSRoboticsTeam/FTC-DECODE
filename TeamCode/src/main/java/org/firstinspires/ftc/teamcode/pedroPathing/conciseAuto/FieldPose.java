@@ -11,8 +11,10 @@ public class FieldPose {
     private static final double HALF_TILE = TILE_SIZE / 2.0;
     private static final double HEADING_North = 90/180*3.1415;// All robots facing 0.0 radians
     private static final double HEADING_N = 90/180*3.1415;
+    private static final double Heading_NW = 315/180*3.1415;
     private static final double Heading_NE = 45/ 180 * 3.1415;//315 degrees
-    private static final double Heading_E = 0  44444444444444445;//270 degrees
+    private static final double Heading_E = 90/180*3.1415;//270 degrees
+    private static final double Heading_W = 270/180*3.1415;
 
     /**
      * The absolute center of the 6x6 FTC field (144 inches / 2).
@@ -101,8 +103,8 @@ public class FieldPose {
     //public static final Pose redGreen = new Pose(getX(5) , getY(4) , Heading_E); // (12.0, 12.0, 0.0)
     //public static final Pose redBarney = new Pose(getX(4) , getY(3) , Heading_E); // (12.0, 12.0, 0.0)
     //public static final Pose redPurple = new Pose(getX(3) , getY(2) + 12, Heading_E); // (12.0, 12.0, 0.0)
-    public static final Pose redFourCorners = new Pose(getX(4) + 12, get&(4) + 12, Heading_NE);
-    public static final Pose blueFourCorners = new Pose(getX(2) + 12, getY(4) + 12, Heading_NW)
+    public static final Pose redFourCorners = new Pose(getX(4) + 12, getY(4) + 12, Heading_NE);
+    public static final Pose blueFourCorners = new Pose(getX(2) + 12, getY(4) + 12, Heading_NW);
     public static final Pose Gert = new Pose(getX(5) + 2, getY(4), Heading_E);
     public static final Pose Mule = new Pose(getX(2) - 2, getY(4) + 12, Heading_W);
 

@@ -34,6 +34,8 @@ public class FieldPaths {
     public static PathChain F2_CENTER, CENTER_F2;
     public static PathChain A5_CENTER, CENTER_A5;
     public static PathChain F5_CENTER, CENTER_F5;
+    public static PathChain Colorado, Utah, NewMexico, Arizona;
+
 
     //Game Paths Red
     public static PathChain redDepotShoot, redShootBarney, redBarneyShoot, redShootGreen, redGreenShoot, redShootPurple, redPurpleShoot;
@@ -121,7 +123,7 @@ public class FieldPaths {
        NewMexico = buildLineChain(redFourCorners, Gert, redFourCorners.getHeading(), Gert.getHeading());
 
        Utah = buildLineChain(blueDepot, blueFourCorners, blueDepot.getHeading(), blueFourCorners.getHeading());
-       Arizona = buildLineChain(blueFourCorners, Mule, blueFourCorners.getHeading, Mule.getHeading);
+       Arizona = buildLineChain(blueFourCorners, Mule, blueFourCorners.getHeading(), Mule.getHeading());
     }
 
     /**
