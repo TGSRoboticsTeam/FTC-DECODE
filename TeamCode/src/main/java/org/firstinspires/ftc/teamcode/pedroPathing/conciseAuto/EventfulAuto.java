@@ -51,7 +51,7 @@ public class EventfulAuto extends OpMode {
 */
 
         pathSequence = new PathAndEvent[]{
-                new PathAndEvent(Colorado, Event.NULL),
+                new PathAndEvent(Colorado, Event.SHOOT3),
                 new PathAndEvent(NewMexico, Event.NULL)
 
         };
