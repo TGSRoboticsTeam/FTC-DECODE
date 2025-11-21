@@ -46,30 +46,27 @@ public class FieldEvent {
         switch (event) {
             case SHOOT3:
 
-                leftFlywheel.setPower(1);
-                rightFlywheel.setPower(1);
-                pauseTime(5);
-                leftFlap.setPosition(0.25);
-                rightFlap.setPosition(0.75);
-                pauseTime(.5);
-                leftFlap.setPosition(0);
-                rightFlap.setPosition(1);
-                pauseTime(5);
-                leftFlap.setPosition(0.25);
-                rightFlap.setPosition(0.75);
-                pauseTime(.5);
-                leftFlap.setPosition(0);
-                rightFlap.setPosition(1);
-                pauseTime(5);
-                leftFlap.setPosition(0.25);
-                rightFlap.setPosition(0.75);
-                pauseTime(.5);
-                leftFlap.setPosition(0);
-                rightFlap.setPosition(1);
-                pauseTime(5);
-                // Logic to shoot a scoring element
-                // Example:
-                // Shooter.shoot();
+                setFlywheels(1);//turn full speed
+                pauseTime(3);
+
+                //shot ball 1
+                toggleFlaps(0.25,0.5,1);
+                pauseTime(3);
+
+                //shoot ball 2
+                toggleFlaps(0.25,0.5,1);
+                pauseTime(3);
+
+                //shoot ball 3
+                toggleFlaps(0.25,0.5,1);
+                pauseTime(3);
+
+                //shoot ball 4
+                toggleFlaps(0.25,0.5,1);
+                pauseTime(3);
+
+                //turn off flys
+                setFlywheels(0.0);
                 return true;
             case CYCLE:
                 // Logic to cycle a scoring element
@@ -110,4 +107,18 @@ public class FieldEvent {
                 return true;
         }
     }
+    public static void toggleFlaps(double goTo, double duration, double returnTo){
+        leftFlap.setPosition(goTo);
+        rightFlap.setPosition(1 - goTo);
+        pauseTime(duration);
+        leftFlap.setPosition(returnTo);
+        rightFlap.setPosition(1-returnTo);
+
+    }
+    public static void setFlywheels(double power){
+        leftFlywheel.setPower(power);
+        rightFlywheel.setPower(power);
+
+    }
+
 }

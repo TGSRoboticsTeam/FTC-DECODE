@@ -15,7 +15,7 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 
 
 @Autonomous(name = "UnEventful Auto", group = "Examples")
-public class UnEventfulAuto extends OpMode {
+public class TestDirectionsAuto extends OpMode {
 
     private Follower follower;
     private int pathIndex = 0;

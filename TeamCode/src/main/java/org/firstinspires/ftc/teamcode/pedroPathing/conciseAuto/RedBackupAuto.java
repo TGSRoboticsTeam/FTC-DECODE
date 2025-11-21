@@ -104,76 +104,17 @@ public class RedBackupAuto extends OpMode {
     }
     @Override
     public void start() {
-        pauseTime(17);
-        leftFlywheel.setPower(1);
-        rightFlywheel.setPower(1);
-
-        leftFrontDrive.setPower(.25);
-        leftBackDrive.setPower(.25);
-        rightFrontDrive.setPower(.25);
-        rightBackDrive.setPower(.25);
-
-        pauseTime(2.5);
-
-        leftFrontDrive.setPower(0);
-        leftBackDrive.setPower(0);
-        rightFrontDrive.setPower(0);
-        rightBackDrive.setPower(0);
-
-
-        pauseTime(0.5);
-
-        leftFlap.setPosition(0.25);
-        rightFlap.setPosition(0.75);
-        pauseTime(1);
-        leftFlap.setPosition(0);
-        rightFlap.setPosition(1);
-        pauseTime(1);
-        leftFlap.setPosition(0.25);
-        rightFlap.setPosition(0.75);
-        pauseTime(1);
-        leftFlap.setPosition(0);
-        rightFlap.setPosition(1);
-        pauseTime(1);
-        leftFlap.setPosition(0.25);
-        rightFlap.setPosition(0.75);
-        pauseTime(1);
-        leftFlap.setPosition(0);
-        rightFlap.setPosition(1);
-
-        pauseTime(1);
-        leftFlap.setPosition(0.25);
-        rightFlap.setPosition(0.75);
-        pauseTime(1);
-        leftFlap.setPosition(0);
-        rightFlap.setPosition(1);
-
-        leftFlywheel.setPower(0);
-        rightFlywheel.setPower(0);
-        pauseTime(1);
-        //
-        leftFrontDrive.setPower(-.35);
-        leftBackDrive.setPower(.35);
-        rightFrontDrive.setPower(.35);
-        rightBackDrive.setPower(-.35);
-
-        pauseTime(1.5);
-
-        leftFrontDrive.setPower(0);
-        leftBackDrive.setPower(0);
-        rightFrontDrive.setPower(0);
-        rightBackDrive.setPower(0);
 
         pathIndex = 0;
         // Start the first path immediately
         if (pathIndex < pathSequence.length) {
-           // follower.followPath(pathSequence[pathIndex].path);
+             follower.followPath(pathSequence[pathIndex].path);
         }
     }
 
     @Override
     public void loop() {
-        /*
+
         follower.update();
 
         // If the current path is complete, perform the event and move to the next path
@@ -194,7 +135,7 @@ public class RedBackupAuto extends OpMode {
                 }
             }
         }
-  */
+
         // Telemetry for debugging
         telemetry.addData("Path Index", pathIndex);
         telemetry.addData("Current Event", pathIndex > -1 && pathIndex < pathSequence.length ? pathSequence[pathIndex].event : "N/A");

@@ -155,7 +155,7 @@ public class BlueBackupAuto extends OpMode {
         leftFrontDrive.setPower(.35);
         leftBackDrive.setPower(-.35);
         rightFrontDrive.setPower(-.35);
-        rightBackDrive.setPower(-.35);
+        rightBackDrive.setPower(.35);
 
         pauseTime(1.5);
 
