@@ -39,6 +39,7 @@ public class FieldEvent {
     }
 
     public static void pauseTime(double t){
+        Timer timer = new Timer();
         timer.resetTimer();
         while(timer.getElapsedTimeSeconds() < t){
         }
@@ -47,7 +48,7 @@ public class FieldEvent {
     public static boolean perform(Event event) {
         switch (event) {
             case SHOOT3:
-                light.setPosition(.6);
+                light.setPosition(RGB.yellow);
                 leftFlywheel.setPower(1);
                 rightFlywheel.setPower(1);
                 pauseTime(5);
@@ -69,6 +70,7 @@ public class FieldEvent {
                 leftFlap.setPosition(0);
                 rightFlap.setPosition(1);
                 pauseTime(5);
+
                 // Logic to shoot a scoring element
                 // Example:
                 // Shooter.shoot();
@@ -107,6 +109,7 @@ public class FieldEvent {
 
                 return true;
             case NULL:
+                light.setPosition(RGB.violet);
             default:
                 // Do nothing
                 return true;

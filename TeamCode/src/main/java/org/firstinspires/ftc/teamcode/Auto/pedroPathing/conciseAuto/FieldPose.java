@@ -105,8 +105,12 @@ public class FieldPose {
     //public static final Pose redPurple = new Pose(getX(3) , getY(2) + 12, Heading_E); // (12.0, 12.0, 0.0)
     public static final Pose redFourCorners = new Pose(getX(4) + 12, getY(4) + 12, Heading_NE);
     public static final Pose blueFourCorners = new Pose(getX(2) + 12, getY(4) + 12, Heading_NW);
-    public static final Pose Gert = new Pose(getX(5) + 2, getY(4), Heading_E);
-    public static final Pose Mule = new Pose(getX(2) - 2, getY(4) + 12, Heading_W);
+    public static final Pose Gert = new Pose(getX(5), getY(4), Heading_E);
+    public static final Pose Mule = new Pose(getX(2), getY(4) + 12, Heading_W);
+
+    public static final Pose redTruck = new Pose(getX(6) + 3, getY(4), Heading_E);
+    public static final Pose blueTruck = new Pose(getX(1) - 3, getY(4), Heading_E);
+
 
 
 
