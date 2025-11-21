@@ -23,6 +23,7 @@ public class UnEventfulAuto extends OpMode {
     private static DcMotor rightFlywheel;
     private static Servo leftFlap;
     private static Servo rightFlap;
+    private static Servo light;
     private static Timer timer;
     DcMotor leftFrontDrive;
     DcMotor leftBackDrive;

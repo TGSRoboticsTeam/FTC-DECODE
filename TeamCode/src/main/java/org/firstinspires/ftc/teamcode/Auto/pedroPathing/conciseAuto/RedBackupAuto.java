@@ -23,6 +23,7 @@ public class RedBackupAuto extends OpMode {
     private static DcMotor rightFlywheel;
     private static Servo leftFlap;
     private static Servo rightFlap;
+    private static Servo light;
     private static Timer timer;
     DcMotor leftFrontDrive;
     DcMotor leftBackDrive;
@@ -46,6 +47,7 @@ public class RedBackupAuto extends OpMode {
         rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
+        light = hardwareMap.get(Servo.class, "light");
         leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
         leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
         rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");

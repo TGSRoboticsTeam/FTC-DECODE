@@ -29,6 +29,7 @@ public class EventfulAuto extends OpMode {
     private static DcMotor rightFlywheel;
     private static Servo leftFlap;
     private static Servo rightFlap;
+    private static Servo light;
     private static Timer timer;
 
     // The new sequence array, holding both paths and events
@@ -44,6 +45,7 @@ public class EventfulAuto extends OpMode {
         rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
+        light = hardwareMap.get(Servo.class, "light");
 
         // Sets the motor direction
         leftFlywheel.setDirection(DcMotor.Direction.FORWARD);
@@ -81,6 +83,7 @@ public class EventfulAuto extends OpMode {
     }
     @Override
     public void start() {
+        light.setPosition(.2);
         leftFlywheel.setPower(1);
         rightFlywheel.setPower(1);
         pauseTime(5);

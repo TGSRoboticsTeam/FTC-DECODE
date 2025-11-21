@@ -13,6 +13,7 @@ public class FieldEvent {
     private static HardwareMap hardwareMap;
     private static RevBlinkinLedDriver blinkinLedDriver;
     private static RevBlinkinLedDriver.BlinkinPattern pattern;
+    private static Servo light;
     private static Timer timer;
     private static double duration;
     private static DcMotor leftFlywheel;
@@ -28,6 +29,7 @@ public class FieldEvent {
         rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
+        light = hardwareMap.get(Servo.class, "light");
         // You can initialize subsystems here if needed, e.g.,
         // Intake.initialize(hardwareMap);
 
@@ -45,7 +47,7 @@ public class FieldEvent {
     public static boolean perform(Event event) {
         switch (event) {
             case SHOOT3:
-
+                light.setPosition(.6);
                 leftFlywheel.setPower(1);
                 rightFlywheel.setPower(1);
                 pauseTime(5);
