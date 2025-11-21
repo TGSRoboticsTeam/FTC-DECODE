@@ -1,23 +1,21 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto;
+package org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto;
 
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPaths.Colorado;
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPaths.NewMexico;
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPose.redDepot;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPaths.Colorado;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPaths.NewMexico;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPose.redDepot;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
 
 
-@Autonomous(name = "RedBackup AutoXX", group = "Examples")
-@Disabled
-public class RedBackupAutoXX extends OpMode {
+@Autonomous(name = "RedBackup Auto", group = "Examples")
+public class RedBackupAuto extends OpMode {
 
     private Follower follower;
     private int pathIndex = 0;
@@ -106,6 +104,7 @@ public class RedBackupAutoXX extends OpMode {
     }
     @Override
     public void start() {
+        pauseTime(17);
         leftFlywheel.setPower(1);
         rightFlywheel.setPower(1);
 
@@ -129,20 +128,20 @@ public class RedBackupAutoXX extends OpMode {
         pauseTime(1);
         leftFlap.setPosition(0);
         rightFlap.setPosition(1);
-        pauseTime(3);
+        pauseTime(1);
         leftFlap.setPosition(0.25);
         rightFlap.setPosition(0.75);
         pauseTime(1);
         leftFlap.setPosition(0);
         rightFlap.setPosition(1);
-        pauseTime(3);
+        pauseTime(1);
         leftFlap.setPosition(0.25);
         rightFlap.setPosition(0.75);
         pauseTime(1);
         leftFlap.setPosition(0);
         rightFlap.setPosition(1);
 
-        pauseTime(3);
+        pauseTime(1);
         leftFlap.setPosition(0.25);
         rightFlap.setPosition(0.75);
         pauseTime(1);
@@ -153,10 +152,10 @@ public class RedBackupAutoXX extends OpMode {
         rightFlywheel.setPower(0);
         pauseTime(1);
         //
-        leftFrontDrive.setPower(-.25);
-        leftBackDrive.setPower(.25);
-        rightFrontDrive.setPower(.25);
-        rightBackDrive.setPower(-.25);
+        leftFrontDrive.setPower(-.35);
+        leftBackDrive.setPower(.35);
+        rightFrontDrive.setPower(.35);
+        rightBackDrive.setPower(-.35);
 
         pauseTime(1.5);
 

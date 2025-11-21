@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto;
+package org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
@@ -6,7 +6,7 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 
 // Import the static poses from your FieldPose class
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPose.*;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPose.*;
 // NOTE: Change the package above to match your file structure!
 
 public class FieldPaths {

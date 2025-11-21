@@ -1,10 +1,12 @@
 repositories {
     mavenCentral()
     google() // Needed for androidx
-    maven { url = 'https://maven.pedropathing.com' }
-    maven { url = "https://mymaven.bylazar.com/releases" }
-    maven { url = 'https://maven.pedropathing.com' }
-    maven { url = "https://mymaven.bylazar.com/releases" }
+
+    maven { url = 'https://maven.brott.dev/' } // amcrobotics
+    maven { url = 'https://maven.pedropathing.com' } // pedropathing
+    maven { url = "https://mymaven.bylazar.com/releases" } // pedropathing tuning
+    maven { url = 'https://maven.pedropathing.com' } // isn't this redundant? "well, if it works, DON'T TOUCH IT!"
+    maven { url = "https://mymaven.bylazar.com/releases" } // okay, this is definitely redundant...
 }
 
 dependencies {
@@ -18,16 +20,20 @@ dependencies {
     implementation 'org.firstinspires.ftc:Vision:11.0.0'
     implementation 'androidx.appcompat:appcompat:1.2.0'
 
+    // pedropathing
     implementation 'com.pedropathing:ftc:2.0.1'
     implementation 'com.pedropathing:telemetry:0.0.6'
     implementation "com.bylazar:panels:1.0.3"
 
-
+    // pedropathing... redundant?
     implementation 'com.pedropathing:ftc:2.0.1'
     implementation 'com.pedropathing:telemetry:0.0.6'
 
+    // pedropathing tuning
     implementation 'com.bylazar:fullpanels:1.0.6'
 
-
+    // amcrobotics
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.acmerobotics.dashboard:dashboard:0.4.16'
 }
 

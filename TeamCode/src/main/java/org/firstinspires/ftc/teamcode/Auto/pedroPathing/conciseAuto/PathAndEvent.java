@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto;
+package org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto;
 
 import com.pedropathing.paths.PathChain;
 
