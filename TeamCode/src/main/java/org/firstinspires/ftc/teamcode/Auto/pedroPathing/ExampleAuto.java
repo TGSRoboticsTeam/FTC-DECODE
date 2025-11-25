@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing; // make sure this aligns with class location
+package org.firstinspires.ftc.teamcode.Auto.pedroPathing; // make sure this aligns with class location
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.util.Timer;

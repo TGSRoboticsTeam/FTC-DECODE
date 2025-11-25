@@ -1,23 +1,21 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto;
+package org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto;
 
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPaths.Colorado;
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPaths.NewMexico;
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPose.redDepot;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPaths.Colorado;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPaths.NewMexico;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPose.redDepot;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
 
 
-@Autonomous(name = "RedBackup AutoXX", group = "Examples")
-@Disabled
-public class RedBackupAutoXX extends OpMode {
+@Autonomous(name = "UnEventful Auto", group = "Examples")
+public class UnEventfulAuto extends OpMode {
 
     private Follower follower;
     private int pathIndex = 0;
@@ -25,6 +23,7 @@ public class RedBackupAutoXX extends OpMode {
     private static DcMotor rightFlywheel;
     private static Servo leftFlap;
     private static Servo rightFlap;
+    private static Servo light;
     private static Timer timer;
     DcMotor leftFrontDrive;
     DcMotor leftBackDrive;
@@ -46,6 +45,8 @@ public class RedBackupAutoXX extends OpMode {
         follower.setStartingPose(redDepot);
         leftFlywheel = hardwareMap.get(DcMotor.class, "left_fly");
         rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
+        light = hardwareMap.get(Servo.class, "light");
+        light.setPosition(0.5);
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
         leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
@@ -106,24 +107,10 @@ public class RedBackupAutoXX extends OpMode {
     }
     @Override
     public void start() {
+        light.setPosition(0.3);
         leftFlywheel.setPower(1);
         rightFlywheel.setPower(1);
-
-        leftFrontDrive.setPower(.25);
-        leftBackDrive.setPower(.25);
-        rightFrontDrive.setPower(.25);
-        rightBackDrive.setPower(.25);
-
-        pauseTime(2.5);
-
-        leftFrontDrive.setPower(0);
-        leftBackDrive.setPower(0);
-        rightFrontDrive.setPower(0);
-        rightBackDrive.setPower(0);
-
-
-        pauseTime(0.5);
-
+        pauseTime(5);
         leftFlap.setPosition(0.25);
         rightFlap.setPosition(0.75);
         pauseTime(1);
@@ -152,13 +139,12 @@ public class RedBackupAutoXX extends OpMode {
         leftFlywheel.setPower(0);
         rightFlywheel.setPower(0);
         pauseTime(1);
-        //
         leftFrontDrive.setPower(-.25);
-        leftBackDrive.setPower(.25);
-        rightFrontDrive.setPower(.25);
+        leftBackDrive.setPower(-.25);
+        rightFrontDrive.setPower(-.25);
         rightBackDrive.setPower(-.25);
 
-        pauseTime(1.5);
+        pauseTime(1);
 
         leftFrontDrive.setPower(0);
         leftBackDrive.setPower(0);
@@ -174,6 +160,8 @@ public class RedBackupAutoXX extends OpMode {
 
     @Override
     public void loop() {
+        light.setPosition(0.7);
+
         /*
         follower.update();
 

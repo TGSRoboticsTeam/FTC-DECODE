@@ -1,7 +1,7 @@
-package org.firstinspires.ftc.teamcode.TeleOp;
+package org.firstinspires.ftc.teamcode.Outdated;
 
 //import com.acmerobotics.dashboard.FtcDashboard;
-//import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
@@ -64,7 +64,7 @@ public class YaelDriveTheThird extends LinearOpMode {
         boolean spinFlywheels = false;
         int flapTimer = 0;
         int shotsLeft = 0; // Used in rapid fire
-        double turretTilt = 0.0;
+        double turretTilt = 1.0;
 
         // Retrieve the IMU from the hardware map
         IMU imu = hardwareMap.get(IMU.class, "imu");
@@ -170,7 +170,7 @@ public class YaelDriveTheThird extends LinearOpMode {
             }
 
             // Flap
-            if (flipFlap) {
+            if (flipFlap && spinFlywheels) { // Only flip if your are spinning the flywheels
                 flapTimer = loadBallTicks;
             }
 

@@ -1,8 +1,8 @@
-package org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto;
+package org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto;
 
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPaths.Colorado;
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPaths.NewMexico;
-import static org.firstinspires.ftc.teamcode.pedroPathing.conciseAuto.FieldPose.redDepot;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPaths.Colorado;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPaths.NewMexico;
+import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.conciseAuto.FieldPose.redDepot;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.util.Timer;
@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
 
 
 @Autonomous(name = "RedBackup Auto", group = "Examples")
