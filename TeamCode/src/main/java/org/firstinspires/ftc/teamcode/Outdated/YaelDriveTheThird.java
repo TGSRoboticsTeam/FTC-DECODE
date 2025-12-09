@@ -10,6 +10,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -40,6 +41,9 @@ public class YaelDriveTheThird extends LinearOpMode {
         rightFrontDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // FLYWHEEL SETUP
+        // Voltage sensor
+        VoltageSensor voltageSensor = hardwareMap.voltageSensor.iterator().next();
+
         // Motor Setup
         DcMotor leftFlywheel = hardwareMap.get(DcMotor.class, "left_fly");
         DcMotor rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
@@ -199,6 +203,8 @@ public class YaelDriveTheThird extends LinearOpMode {
 
             turretServo.setPosition(turretTilt);
             ////////////// TELEMETRY //////////////
+            telemetry.addData("Voltage Sensor:)", voltageSensor.getVoltage());
+            telemetry.update();
             /*telemetry.addData("Linear Slide", linearSlide.getCurrentPosition());
 
             YawPitchRollAngles orientation = imu.getRobotYawPitchRollAngles();
