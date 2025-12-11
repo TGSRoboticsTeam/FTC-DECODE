@@ -1,322 +1,242 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.IMU;
-import com.qualcomm.robotcore.util.ElapsedTime;
-
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-/**
- * Field–centric swerve drive TeleOp for 4 Axon pods:
- *  - motorA/B/C/D : drive motors (GoBILDA 5000 series)
- *  - servoA/B/C/D : Axon Max+ MK1 in continuous mode (steering)
- *  - podA/B/C/D   : analog absolute encoders for pod angle
- *
- * Layout (top view, starting top-left and going clockwise):
- *      A (front-left)   B (front-right)
- *      D (back-left)    C (back-right)
- */
-@TeleOp(name = "Swerve Field-Centric TeleOp", group = "TeleOp")
-public class GraciousProfessionalismTestSwerve extends LinearOpMode { // G.P.T.Swerve, You're welcome.
+@TeleOp(name = "GPTSwerve", group = "Swerve")
+public class GraciousProfessionalismTestSwerve extends LinearOpMode { // G.P.T.Swerve, you're welcome.
 
-    // --- Robot geometry (inches) ---
-    // Use your drawing dimensions: width 17.258, length 13.544
-    private static final double TRACK_WIDTH_IN  = 17.258;  // left-right distance between module centers
-    private static final double WHEELBASE_IN    = 13.544;  // front-back distance between module centers
+    // Drive Motors
+    private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
 
-    // --- Steering PID (for Axon CR servo) ---
-    private static final double STEER_KP = 1.2;   // start here, tune on robot
-    private static final double STEER_KI = 0.0;
-    private static final double STEER_KD = 0.02;
+    // Steering Servos
+    private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
 
-    // --- Heading auto-align ---
-    private static final double HEADING_ALIGN_KP = 2.0; // for aligning to +X (0 rad)
+    // Analog Encoders (absolute angle sensors)
+    private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
 
-    // --- Axon encoder voltage range ---
-    private static final double ENCODER_MAX_VOLTAGE = 3.3; // or 5.0 depending on wiring
-
-    // Offsets so that "zero" pod angle (wheels facing +X) corresponds to 0 rad
-    // You will set/tune these using your pod-zero program.
-    private static final double OFFSET_A_RAD = 0.0;
-    private static final double OFFSET_B_RAD = 0.0;
-    private static final double OFFSET_C_RAD = 0.0;
-    private static final double OFFSET_D_RAD = 0.0;
-
-    // Hardware
+    // IMU for field-centric orientation
     private IMU imu;
 
-    private DcMotor motorA, motorB, motorC, motorD;
-    private CRServo servoA, servoB, servoC, servoD;
-    private AnalogInput podA, podB, podC, podD;
+    // Robot Geometry (in inches)
+    final double TRACK_WIDTH = 17.258;    // Width between left and right wheels
+    final double WHEELBASE   = 13.544;    // Length between front and back wheels
+    final double R = Math.hypot(TRACK_WIDTH, WHEELBASE); // Diagonal distance for swerve math
 
-    private SwerveModule moduleA, moduleB, moduleC, moduleD;
+    // Offsets for CRServo encoders
+    final double FRONT_LEFT_OFFSET = 2.796;
+    final double FRONT_RIGHT_OFFSET = 3.059;
+    final double BACK_LEFT_OFFSET = 1.280;
+    final double BACK_RIGHT_OFFSET = 2.538;
 
-    // IMU heading offset (for zero-heading button)
-    private double headingOffsetRad = 0.0;
 
-    private final ElapsedTime loopTimer = new ElapsedTime();
+    // Optional Auto-align target (X axis, in inches)
+    double targetX = 0;
 
     @Override
     public void runOpMode() {
-        // ---------------- IMU SETUP ----------------
+
+        // Hardware Mapping
+        frontLeftDrive  = hardwareMap.get(DcMotor.class, "frontLeftDrive");
+        frontRightDrive = hardwareMap.get(DcMotor.class, "frontRightDrive");
+        backLeftDrive   = hardwareMap.get(DcMotor.class, "backLeftDrive");
+        backRightDrive  = hardwareMap.get(DcMotor.class, "backRightDrive");
+
+        frontLeftSteer  = hardwareMap.get(CRServo.class, "frontLeftSteer");
+        frontRightSteer = hardwareMap.get(CRServo.class, "frontRightSteer");
+        backLeftSteer   = hardwareMap.get(CRServo.class, "backLeftSteer");
+        backRightSteer  = hardwareMap.get(CRServo.class, "backRightSteer");
+
+        frontLeftEncoder  = hardwareMap.get(AnalogInput.class, "frontLeftEncoder");
+        frontRightEncoder = hardwareMap.get(AnalogInput.class, "frontRightEncoder");
+        backLeftEncoder   = hardwareMap.get(AnalogInput.class, "backLeftEncoder");
+        backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
+
         imu = hardwareMap.get(IMU.class, "imu");
 
-        // If your Control Hub is mounted in a non-standard orientation,
-        // configure it here. Example assumes logo UP, USB FORWARD:
-        IMU.Parameters imuParams = new IMU.Parameters(
+        // Initialize IMU with REV Hub orientation parameters
+        IMU.Parameters parameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
                         RevHubOrientationOnRobot.LogoFacingDirection.UP,
                         RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
                 )
         );
-        imu.initialize(imuParams);
+        imu.initialize(parameters);
 
-        // ---------------- HARDWARE MAP ----------------
-        motorA = hardwareMap.get(DcMotor.class, "motorA"); // front-left
-        motorB = hardwareMap.get(DcMotor.class, "motorB"); // front-right
-        motorC = hardwareMap.get(DcMotor.class, "motorC"); // back-right
-        motorD = hardwareMap.get(DcMotor.class, "motorD"); // back-left
-
-        servoA = hardwareMap.get(CRServo.class, "servoA");
-        servoB = hardwareMap.get(CRServo.class, "servoB");
-        servoC = hardwareMap.get(CRServo.class, "servoC");
-        servoD = hardwareMap.get(CRServo.class, "servoD");
-
-        podA = hardwareMap.get(AnalogInput.class, "podA");
-        podB = hardwareMap.get(AnalogInput.class, "podB");
-        podC = hardwareMap.get(AnalogInput.class, "podC");
-        podD = hardwareMap.get(AnalogInput.class, "podD");
-
-        // Optional: set any motor directions here if needed
-        motorA.setDirection(DcMotor.Direction.FORWARD);
-        motorB.setDirection(DcMotor.Direction.REVERSE); // many drivetrains reverse right side
-        motorC.setDirection(DcMotor.Direction.REVERSE);
-        motorD.setDirection(DcMotor.Direction.FORWARD);
-
-        motorA.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorB.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorC.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        motorD.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // ---------------- SWERVE MODULE OBJECTS ----------------
-        double R = Math.hypot(TRACK_WIDTH_IN, WHEELBASE_IN);
-
-        // Front-Left (A)
-        moduleA = new SwerveModule(
-                motorA, servoA, podA,
-                OFFSET_A_RAD,
-                +WHEELBASE_IN / R, +TRACK_WIDTH_IN / R
-        );
-        // Front-Right (B)
-        moduleB = new SwerveModule(
-                motorB, servoB, podB,
-                OFFSET_B_RAD,
-                +WHEELBASE_IN / R, -TRACK_WIDTH_IN / R
-        );
-        // Back-Right (C)
-        moduleC = new SwerveModule(
-                motorC, servoC, podC,
-                OFFSET_C_RAD,
-                -WHEELBASE_IN / R, -TRACK_WIDTH_IN / R
-        );
-        // Back-Left (D)
-        moduleD = new SwerveModule(
-                motorD, servoD, podD,
-                OFFSET_D_RAD,
-                -WHEELBASE_IN / R, +TRACK_WIDTH_IN / R
-        );
-
-        telemetry.addLine("Swerve Field-Centric TeleOp ready");
-        telemetry.update();
+        // Reset drive motors
+        resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive);
 
         waitForStart();
-        loopTimer.reset();
 
-        boolean lastY = false; // for edge-detect on zero-heading
+        // Heading offset for zeroing field-centric orientation
+        double headingOffset = 0;
+
         while (opModeIsActive()) {
-            double dt = loopTimer.seconds();
-            loopTimer.reset();
 
-            // ---------------- READ GAMEPAD ----------------
-            double lx = gamepad1.left_stick_x;   // + right
-            double ly = -gamepad1.left_stick_y;  // + forward (invert)
-            double rx = gamepad1.right_stick_x;  // rotation
-
-            // deadzone
-            if (Math.abs(lx) < 0.02) lx = 0;
-            if (Math.abs(ly) < 0.02) ly = 0;
-            if (Math.abs(rx) < 0.02) rx = 0;
-
-            // Zero heading (Y button, edge-detected)
-            if (gamepad1.y && !lastY) {
-                double rawHeading = getRawHeadingRad();
-                headingOffsetRad = rawHeading; // so current becomes 0
-            }
-            lastY = gamepad1.y;
-
-            // Current field-relative heading
-            double robotHeading = getFieldHeadingRad();
-
-            // Auto-align to +X (0 rad) while left-stick button held
-            if (gamepad1.left_stick_button) {
-                double error = wrapAngle(0.0 - robotHeading);
-                rx = HEADING_ALIGN_KP * error;
-                rx = clamp(rx, -1.0, 1.0);
+            // Zero Heading (press START button)
+            if (gamepad1.start) {
+                headingOffset = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
             }
 
-            // ---------------- FIELD-CENTRIC TRANSFORM ----------------
-            // Convert joystick (field frame) to robot frame
-            double cosH = Math.cos(robotHeading);
-            double sinH = Math.sin(robotHeading);
+            // Current heading in radians, corrected by zero offset
+            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
 
-            // Robot-relative velocities
-            double vx = lx * cosH + ly * sinH;
-            double vy = -lx * sinH + ly * cosH;
-            double omega = rx; // rotational command
+            // Driving Input
+            double y = -gamepad1.left_stick_y; // Forward/backward
+            double x = gamepad1.left_stick_x;  // Left/right
+            double rot = gamepad1.right_stick_x; // Rotation
 
-            // ---------------- APPLY TO SWERVE MODULES ----------------
-            // Each module computes its own desired speed/angle given vx, vy, omega
-            double maxSpeed = 0.0;
+            // Field-centric transformation
+            double cosA = Math.cos(heading);
+            double sinA = Math.sin(heading);
+            double robotX = x * cosA - y * sinA;
+            double robotY = x * sinA + y * cosA;
 
-            maxSpeed = Math.max(maxSpeed, moduleA.computeDesiredState(vx, vy, omega));
-            maxSpeed = Math.max(maxSpeed, moduleB.computeDesiredState(vx, vy, omega));
-            maxSpeed = Math.max(maxSpeed, moduleC.computeDesiredState(vx, vy, omega));
-            maxSpeed = Math.max(maxSpeed, moduleD.computeDesiredState(vx, vy, omega));
+            // Optional Auto-align X axis
+            if (gamepad1.left_bumper) {
+                double error = targetX - robotX; // Proportional correction
+                robotX = error * 0.5;
+            }
 
-            // Normalize speeds so none exceed 1.0
-            if (maxSpeed < 1e-3) maxSpeed = 1.0; // prevent divide-by-zero when stopped
+            // Lock wheels in place (nullify opponent defense)
+            boolean lockedInPlace = gamepad1.left_stick_button;
 
-            moduleA.apply(dt, maxSpeed);
-            moduleB.apply(dt, maxSpeed);
-            moduleC.apply(dt, maxSpeed);
-            moduleD.apply(dt, maxSpeed);
+            // Swerve Kinematics
+            double A = robotX - rot * (WHEELBASE / R);
+            double B = robotX + rot * (WHEELBASE / R);
+            double C = robotY - rot * (TRACK_WIDTH / R);
+            double D = robotY + rot * (TRACK_WIDTH / R);
 
-            // ---------------- TELEMETRY ----------------
-            telemetry.addData("Heading (deg)", Math.toDegrees(robotHeading));
-            telemetry.addData("LX", lx);
-            telemetry.addData("LY", ly);
-            telemetry.addData("RX/omega", omega);
-            telemetry.addLine("Y = zero heading, LS button = auto-align to +X");
+            // Calculate wheel speeds
+            double speedFrontLeft  = Math.hypot(B, D);
+            double speedFrontRight = Math.hypot(B, C);
+            double speedBackLeft   = Math.hypot(A, D);
+            double speedBackRight  = Math.hypot(A, C);
+
+            double maxSpeed = Math.max(Math.max(speedFrontLeft, speedFrontRight), Math.max(speedBackLeft, speedBackRight));
+            if (maxSpeed > 1.0) {
+                speedFrontLeft /= maxSpeed;
+                speedFrontRight /= maxSpeed;
+                speedBackLeft /= maxSpeed;
+                speedBackRight /= maxSpeed;
+            }
+
+            // Calculate wheel angles
+            double angleFrontLeft  = Math.atan2(B, D);
+            double angleFrontRight = Math.atan2(B, C);
+            double angleBackLeft   = Math.atan2(A, D);
+            double angleBackRight  = Math.atan2(A, C);
+
+            if (lockedInPlace) {
+                angleFrontLeft  += Math.PI / 4;  // 45°
+                angleFrontRight -= Math.PI / 4;  // -45°
+                angleBackLeft   -= Math.PI / 4;  // -45°
+                angleBackRight  += Math.PI / 4;  // 45°
+
+                speedFrontLeft  = 0;
+                speedFrontRight = 0;
+                speedBackLeft   = 0;
+                speedBackRight  = 0;
+            }
+
+            // Apply module outputs
+            runModule(frontLeftDrive, frontLeftSteer, frontLeftEncoder, FRONT_LEFT_OFFSET, speedFrontLeft, angleFrontLeft);
+            runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, speedFrontRight, angleFrontRight);
+            runModule(backLeftDrive, backLeftSteer, backLeftEncoder, BACK_LEFT_OFFSET, speedBackLeft, angleBackLeft);
+            runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBackRight, angleBackRight);
+
+            // Telemetry for debugging
+            telemetry.addData("Heading (deg)", Math.toDegrees(heading));
+            telemetry.addData("Target X", targetX);
+            telemetry.addData("Joystick X", x);
             telemetry.update();
         }
     }
 
-    // ========== HELPER METHODS ==========
+    // Module Control (Steering + Wheel)
+    // Module Control (Steering + Wheel) with encoder offsets
+    private void runModule(DcMotor driveMotor, CRServo steerServo, AnalogInput encoder, double encoderOffset, double speed, double targetAngle) {
 
-    /** Raw yaw angle from IMU, radians, increasing CCW. */
-    private double getRawHeadingRad() {
-        return imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        // Read absolute encoder (0-2PI) and apply offset
+        double currentAngle = encoder.getVoltage() / 3.3 * (2 * Math.PI) - encoderOffset;
+        currentAngle = wrapAngle(currentAngle);
+
+        // Compute error between target and current
+        double delta = wrapAngle(targetAngle - currentAngle);
+
+        // 180° optimization to minimize steering rotation
+        if (Math.abs(delta) > Math.PI / 2) {
+            delta = wrapAngle(delta + Math.PI);
+            speed *= -1; // Reverse wheel direction
+        }
+
+        // Proportional controller for CRServo
+        double kP = 2.0; // Adjust experimentally
+        double servoPower = kP * delta;
+
+        // Deadband to prevent oscillation
+        if (Math.abs(servoPower) < 0.05) servoPower = 0;
+
+        // Clip servo power to [-1, 1]
+        servoPower = Math.max(-1, Math.min(1, servoPower));
+
+        // Apply powers
+        steerServo.setPower(servoPower);
+        driveMotor.setPower(speed);
     }
 
-    /** Field heading (with zero offset applied), radians in [-pi, pi]. */
-    private double getFieldHeadingRad() {
-        double angle = getRawHeadingRad() - headingOffsetRad;
-        return wrapAngle(angle);
-    }
 
-    private static double wrapAngle(double angle) {
-        while (angle > Math.PI) angle -= 2.0 * Math.PI;
-        while (angle < -Math.PI) angle += 2.0 * Math.PI;
+    // Helper: Normalize angle to [-PI, PI]
+    private double wrapAngle(double angle) {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
         return angle;
     }
 
-    private static double clamp(double v, double min, double max) {
-        return Math.max(min, Math.min(max, v));
-    }
-
-    // ========== INNER CLASS: SWERVE MODULE ==========
-
-    /**
-     * Represents one swerve module: drive motor, CR steering servo, analog encoder.
-     * Uses simple PID on steering and module optimization (flip 180° if shorter).
-     */
-    private class SwerveModule {
-        private final DcMotor drive;
-        private final CRServo steer;
-        private final AnalogInput encoder;
-        private final double encoderOffset; // radians
-        private final double kL; // geometry coefficient
-        private final double kW;
-
-        // Desired state for this loop
-        private double targetSpeed = 0.0;  // 0–1
-        private double targetAngle = 0.0;  // radians, field-relative
-
-        // Steering PID state
-        private double steerIntegral = 0.0;
-        private double steerLastError = 0.0;
-
-        SwerveModule(DcMotor drive, CRServo steer, AnalogInput encoder,
-                     double encoderOffset, double kL, double kW) {
-            this.drive = drive;
-            this.steer = steer;
-            this.encoder = encoder;
-            this.encoderOffset = encoderOffset;
-            this.kL = kL;
-            this.kW = kW;
-        }
-
-        /**
-         * Computes desired wheel speed and angle for given robot-frame vx, vy, omega.
-         *
-         * @return speed magnitude (for normalization across modules).
-         */
-        public double computeDesiredState(double vx, double vy, double omega) {
-            double vxWheel = vx - omega * kL;
-            double vyWheel = vy + omega * kW;
-
-            double speed = Math.hypot(vxWheel, vyWheel);
-            double angle = Math.atan2(vyWheel, vxWheel); // radians
-
-            // Module optimization: compare with current angle and decide whether to flip 180°
-            double currentAngle = getCurrentAngle();
-            double delta = wrapAngle(angle - currentAngle);
-
-            // If we’d need to turn more than 90°, flip direction
-            if (Math.abs(delta) > Math.PI / 2.0) {
-                angle = wrapAngle(angle + Math.PI);
-                speed = -speed;
-            }
-
-            targetSpeed = speed;
-            targetAngle = angle;
-            return Math.abs(speed);
-        }
-
-        /** Apply steering PID and drive output. */
-        public void apply(double dtSeconds, double maxSpeed) {
-            // Normalize speed
-            double drivePower = targetSpeed / maxSpeed;
-            drivePower = clamp(drivePower, -1.0, 1.0);
-
-            // Steering PID
-            double currentAngle = getCurrentAngle();
-            double error = wrapAngle(targetAngle - currentAngle);
-
-            steerIntegral += error * dtSeconds;
-            double derivative = (error - steerLastError) / dtSeconds;
-            steerLastError = error;
-
-            double steerPower =
-                    STEER_KP * error + STEER_KI * steerIntegral + STEER_KD * derivative;
-            steerPower = clamp(steerPower, -1.0, 1.0);
-
-            // Apply to hardware
-            drive.setPower(drivePower);
-            steer.setPower(steerPower);
-        }
-
-        /** Current pod angle in radians, using analog encoder + offset. */
-        private double getCurrentAngle() {
-            double voltage = encoder.getVoltage();
-            double angle = (voltage / ENCODER_MAX_VOLTAGE) * 2.0 * Math.PI;
-            angle = wrapAngle(angle + encoderOffset);
-            return angle;
+    // Helper: Reset drive motors
+    private void resetMotors(DcMotor... motors) {
+        for (DcMotor m : motors) {
+            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
     }
+
+    // Appendix
+    /*
+    1. Swerve Math:
+       - A, B, C, D: Wheel vector components for rotation + translation
+       - speed: hypotenuse of vector (magnitude)
+       - angle: atan2(B,D) etc. (direction)
+
+    2. Field-Centric Control:
+       - Robot-oriented joystick input rotated by IMU heading
+       - Cosine/sine used to rotate vector into world coordinates
+
+    3. 180° Optimization:
+       - If steering delta > 90°, rotate wheel 180° and invert drive
+       - Minimizes servo rotation time, improves responsiveness
+
+    4. IMU:
+       - Zero heading via pressing START
+       - Used to rotate joystick input for field-centric control
+
+    5. Naming Conventions:
+       - frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive
+       - frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer
+       - frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder
+
+    6. Telemetry:
+       - Heading in degrees
+       - Target X (for auto-align)
+       - Joystick X for driver reference
+
+    7. Notes:
+       -
+    */
 }
