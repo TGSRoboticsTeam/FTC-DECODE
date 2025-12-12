@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
+@Disabled
 @TeleOp(name = "DiamondbackDriveRobotCentric", group = "Swerve")
 public class DiamondbackDriveRobotCentric extends LinearOpMode {
 

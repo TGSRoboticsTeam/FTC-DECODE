@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
+
 @TeleOp(name = "DiamondbackDriveFieldCentric", group = "Swerve")
 public class DiamondbackDriveFieldCentric extends LinearOpMode {
 
@@ -18,11 +19,12 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
-    private IMU imu; // IMU is NOW CRITICAL for Field-Centric Drive
+    private IMU imu;
     private DcMotor leftFly, rightFly, intake;
     private Servo trigger;
     private Servo adjuster;
     private Servo light;
+    // Removed: armMotor and wristServo
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -30,7 +32,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     final double R = Math.hypot(TRACK_WIDTH, WHEELBASE);
 
     // --- 3. CRITICAL: OFFSETS (Using your measured values) ---
-    final double FRONT_LEFT_OFFSET  = 5.2417;
+    final double FRONT_LEFT_OFFSET  = 5.2417; // This value is in radians (0 to 2π)
     final double FRONT_RIGHT_OFFSET = 5.7881;
     final double BACK_LEFT_OFFSET   = 2.4143;
     final double BACK_RIGHT_OFFSET  = 4.8209;
@@ -58,9 +60,9 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
 
     // Turret Tilt Control Parameters
     final double INITIAL_TURRET_TILT = 0.5;
-    final double TURRET_TILT_STEP_STICK = 0.015;
-    final double MIN_TURRET_TILT = 0.01;
-    final double MAX_TURRET_TILT = 0.99;
+    final double TURRET_TILT_STEP_STICK = 0.015; // Increased speed for stick control
+    final double MIN_TURRET_TILT = 0.01; // Wider lower limit
+    final double MAX_TURRET_TILT = 0.99; // Wider upper limit
 
     // --- 8. LIGHT SWEEP PARAMETERS ---
     final double LIGHT_MIN_POS = 0.277;
@@ -75,10 +77,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     private boolean leftTriggerPreviouslyPressed = false;
     private boolean rightTriggerPreviouslyPressed = false;
     private boolean aButtonPreviouslyPressed = false;
-    private boolean yButtonPreviouslyPressed = false; // Added for Yaw Reset
-
-    // Field-Centric Variable
-    private double headingOffset = 0.0; // Offset to define "forward" relative to field
+    private boolean yButtonPreviouslyPressed = false; // Yaw Reset State
 
     // Light Sweep State Variables
     private double lightSweepPosition = LIGHT_MIN_POS;
@@ -90,6 +89,9 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
 
         initializeHardware();
 
+        // **CRITICAL**: Reset IMU Yaw on initialization so current direction is 0 degrees.
+        imu.resetYaw();
+
         waitForStart();
 
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
@@ -100,19 +102,16 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
         adjuster.setPosition(turretTilt);
         light.setPosition(lightSweepPosition);
 
-        // Reset the IMU yaw on start to ensure a known initial heading
-        imu.resetYaw();
-
         while (opModeIsActive()) {
 
-            // --- Toggle Logic for Calibration Mode (Gamepad 1) ---
+            // --- Toggle Logic for Calibration Mode (Gamepad 1 R3) ---
             boolean rightStickButtonCurrentlyPressed = gamepad1.right_stick_button;
             if (rightStickButtonCurrentlyPressed && !rightStickButtonPreviouslyPressed) {
                 isCalibrationModeActive = !isCalibrationModeActive;
             }
             rightStickButtonPreviouslyPressed = rightStickButtonCurrentlyPressed;
 
-            // Speed Limiter Logic (Gamepad 1)
+            // Speed Limiter Logic (Gamepad 1 Right Bumper)
             double speedMultiplier = MAX_SPEED_GLOBAL;
             if (gamepad1.right_bumper) {
                 speedMultiplier = MAX_SPEED_SLOW_MODE;
@@ -122,14 +121,13 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             boolean yButtonCurrentlyPressed = gamepad1.y;
             if (yButtonCurrentlyPressed && !yButtonPreviouslyPressed) {
                 imu.resetYaw();
-                headingOffset = 0.0; // Reset offset, since yaw is reset
                 telemetry.addData("Field-Centric", "Yaw Reset to 0 degrees.");
                 telemetry.update();
             }
             yButtonPreviouslyPressed = yButtonCurrentlyPressed;
 
-            // Get current heading from IMU
-            double robotYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
+            // Get current heading from IMU (in Radians)
+            double robotYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
             // --- CALIBRATION MODE CHECK ---
             if (isCalibrationModeActive) {
@@ -156,7 +154,8 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             // --- TURRET TILT CONTROL (COMBINED) ---
 
             // 1. Gamepad 2 Right Stick Y (Continuous/Faster)
-            double tiltInputStick = gamepad2.right_stick_y;
+            // Note: This is controlled by gamepad2, but uses the Y-stick to move the adjuster servo.
+            double tiltInputStick = -gamepad2.right_stick_y;
 
             if (Math.abs(tiltInputStick) > ADJUSTER_DEADBAND) {
                 turretTilt += tiltInputStick * TURRET_TILT_STEP_STICK;
@@ -167,10 +166,10 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             boolean tiltDownDpad = gamepad1.dpad_down;
 
             if (tiltUpDpad) {
-                turretTilt = MAX_TURRET_TILT;
+                turretTilt = MAX_TURRET_TILT; // Snap to max position
             }
             else if (tiltDownDpad) {
-                turretTilt = MIN_TURRET_TILT;
+                turretTilt = MIN_TURRET_TILT; // Snap to min position
             }
 
             // Clamp the turret tilt position within the defined limits
@@ -199,20 +198,18 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
                 }
             }
             light.setPosition(lightSweepPosition);
-            // --- END LIGHT SERVO SWEEP ---
 
 
             // --- DRIVE INPUTS (FIELD-CENTRIC) ---
 
-            // Step 1: Get Raw Joystick Inputs (relative to driver)
-            double fieldY = -gamepad1.left_stick_y * speedMultiplier; // Forward/Backward
-            double fieldX = gamepad1.left_stick_x * speedMultiplier;  // Strafe Left/Right
-            double rot = gamepad1.right_stick_x * speedMultiplier;     // Rotation
+            // Step 1: Get Raw Joystick Inputs (relative to driver/field)
+            double fieldY = -gamepad1.left_stick_y * speedMultiplier;
+            double fieldX = gamepad1.left_stick_x * speedMultiplier;
+            double rot = gamepad1.right_stick_x * speedMultiplier;
 
             // Step 2: Apply Coordinate Rotation (Field-Centric Transformation)
-            // Rotate the field-relative vector (fieldX, fieldY) by -robotYaw
-            double robotX = fieldX * Math.cos(robotYaw) - fieldY * Math.sin(robotYaw);
-            double robotY = fieldX * Math.sin(robotYaw) + fieldY * Math.cos(robotYaw);
+            double robotX = fieldX * Math.cos(-robotYaw) - fieldY * Math.sin(-robotYaw);
+            double robotY = fieldX * Math.sin(-robotYaw) + fieldY * Math.cos(-robotYaw);
 
             // Swerve Kinematics (Uses new robotX and robotY)
             double A = robotX - rot * (WHEELBASE / R);
@@ -233,7 +230,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
                 speedBackRight /= maxSpeed;
             }
 
-            // Steering Logic (Unchanged)
+            // Steering Logic (Recalculate angles if there is movement)
             if (Math.abs(fieldX) > DRIVE_DEADBAND || Math.abs(fieldY) > DRIVE_DEADBAND || Math.abs(rot) > DRIVE_DEADBAND) {
                 targetAngleFL = Math.atan2(B, D);
                 targetAngleFR = Math.atan2(B, C);
@@ -243,7 +240,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
                 speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
             }
 
-            // Lock wheels override ('X' formation)
+            // Lock wheels override (Gamepad 1 Left Stick Button)
             if (gamepad1.left_stick_button) {
                 targetAngleFL = Math.PI / 4; targetAngleFR = -Math.PI / 4;
                 targetAngleBL = -Math.PI / 4; targetAngleBR = Math.PI / 4;
@@ -256,7 +253,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             runModule(backLeftDrive, backLeftSteer, backLeftEncoder, BACK_LEFT_OFFSET, speedBackLeft, targetAngleBL);
             runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBackRight, targetAngleBR);
 
-            // --- MECHANISM CONTROL (Gamepad 1) ---
+            // --- MECHANISM CONTROL (Gamepad 1 Triggers) ---
 
             // Flywheel Toggle (Left Trigger)
             boolean leftTriggerCurrentlyPressed = gamepad1.left_trigger > TRIGGER_THRESHOLD;
@@ -278,15 +275,15 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             intake.setPower(isIntakeOn ? 1.0 : 0);
 
             // --- TELEMETRY ---
-            telemetry.addData("Mode", "**DiamondbackDrive (FIELD-CENTRIC)**");
-            telemetry.addData("Yaw (IMU)", "%.2f deg", Math.toDegrees(imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS)));
-            telemetry.addData("Yaw Control", "Press Y to reset forward direction.");
+            telemetry.addData("Mode", "**FIELD-CENTRIC ACTIVE (Launcher/Intake)**");
+            telemetry.addData("Current Yaw (Degrees)", "%.2f", Math.toDegrees(robotYaw));
+            telemetry.addData("Control", "Y Button to Reset Field Forward");
             telemetry.addData("Turret Tilt Position", "%.3f", turretTilt);
             telemetry.update();
         }
     }
 
-    // --- HELPER METHODS (Unchanged) ---
+    // --- HELPER METHODS ---
 
     private void initializeHardware() {
         // --- Swerve Drive Hardware ---
@@ -304,20 +301,22 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
         imu = hardwareMap.get(IMU.class, "imu");
 
-        // --- Mechanism Hardware ---
+        // --- Mechanism Hardware (Original) ---
         leftFly = hardwareMap.get(DcMotor.class, "leftFly");
         rightFly = hardwareMap.get(DcMotor.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
         trigger = hardwareMap.get(Servo.class, "trigger");
         adjuster = hardwareMap.get(Servo.class, "adjuster");
         light = hardwareMap.get(Servo.class, "light");
+        // Removed: armMotor and wristServo initialization
 
-        // CRITICAL: IMU INITIALIZATION
+        // **CRITICAL**: Define the orientation of the Hub on the robot.
+        // USB ports are visible from the top (facing UP).
+        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
+        RevHubOrientationOnRobot.UsbFacingDirection  usbDirection  = RevHubOrientationOnRobot.UsbFacingDirection.UP;
+
         IMU.Parameters parameters = new IMU.Parameters(
-                new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
-                )
+                new RevHubOrientationOnRobot(logoDirection, usbDirection)
         );
         imu.initialize(parameters);
 
@@ -327,7 +326,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
         frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
         backRightDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        // --- Mechanism Motor Direction Fix (Controlled by toggles at the top) ---
+        // --- Mechanism Motor Direction Fix ---
         final boolean LEFT_FLY_REVERSE    = false;
         final boolean RIGHT_FLY_REVERSE   = true;
         final boolean INTAKE_REVERSE      = true;
@@ -349,13 +348,14 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     }
 
     private void runModule(DcMotor driveMotor, CRServo steerServo, AnalogInput encoder, double encoderOffset, double speed, double targetAngle) {
-        // Swerve module control logic (unchanged)
+        // Swerve module control logic (PID loop for steering)
         double rawAngle = getRawAngle(encoder);
         double currentAngle = rawAngle - encoderOffset;
         currentAngle = wrapAngle(currentAngle);
 
         double delta = wrapAngle(targetAngle - currentAngle);
 
+        // Check for 180-degree flip optimization
         if (Math.abs(delta) > Math.PI / 2) {
             delta = wrapAngle(delta + Math.PI);
             speed *= -1;
@@ -373,6 +373,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     }
 
     private double wrapAngle(double angle) {
+        // Wraps angle between -PI and PI
         while (angle > Math.PI) angle -= 2 * Math.PI;
         while (angle < -Math.PI) angle += 2 * Math.PI;
         return angle;
@@ -385,10 +386,12 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     }
 
     private double getRawAngle(AnalogInput encoder) {
+        // Converts Analog Input voltage (0-3.3V) to Radians (0 to 2π)
         return encoder.getVoltage() / 3.3 * (2 * Math.PI);
     }
 
     private void runCalibrationMode(DcMotor[] driveMotors, CRServo[] steerServos) {
+        // Calibration mode disables power to all motors/servos except for encoder telemetry
         for (DcMotor motor : driveMotors) { motor.setPower(0); }
         for (CRServo servo : steerServos) { servo.setPower(0); }
 
