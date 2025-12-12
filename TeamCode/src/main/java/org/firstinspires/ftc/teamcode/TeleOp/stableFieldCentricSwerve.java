@@ -9,8 +9,8 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@TeleOp(name = "StableSwerve_RobotCentric_Limited", group = "Swerve")
-public class StableSwerve extends LinearOpMode {
+@TeleOp(name = "stableFieldCentricSwerve", group = "Swerve")
+public class stableFieldCentricSwerve extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS ---
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -30,11 +30,11 @@ public class StableSwerve extends LinearOpMode {
     final double BACK_RIGHT_OFFSET  = 4.8209;
 
     // --- 4. TUNING PARAMETERS ---
-    final double STEER_KP = 0.6; // Smoother steering
+    final double STEER_KP = 0.6; // Reduced for smoother steering
     final double DRIVE_DEADBAND = 0.05;
     final double STEER_DEADBAND = 0.05;
 
-    // --- 5. SPEED CONTROL CONSTANTS (NEW) ---
+    // --- 5. SPEED CONTROL CONSTANTS ---
     final double MAX_SPEED_GLOBAL = 0.8; // 80% maximum speed
     final double MAX_SPEED_SLOW_MODE = 0.2; // 20% speed when right bumper is held
 
@@ -50,6 +50,7 @@ public class StableSwerve extends LinearOpMode {
 
         waitForStart();
 
+        double headingOffset = 0;
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
 
         while (opModeIsActive()) {
@@ -69,6 +70,10 @@ public class StableSwerve extends LinearOpMode {
                 speedMultiplier = MAX_SPEED_SLOW_MODE; // Override to 20%
             }
 
+            // Zero Heading
+            if (gamepad1.start) {
+                headingOffset = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            }
 
             // --- CALIBRATION MODE CHECK ---
             if (isCalibrationModeActive) {
@@ -79,16 +84,20 @@ public class StableSwerve extends LinearOpMode {
                 continue;
             }
 
-            // --- ROBOT CENTRIC DRIVE MODE ---
+            // --- REGULAR DRIVE MODE (Field-Centric) ---
+            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
 
-            // Driving Input: Directly used as robot-frame commands, scaled by multiplier
+            // Driving Input
+            // Apply speed multiplier directly to joystick inputs for linear scaling
             double y = -gamepad1.left_stick_y * speedMultiplier;
             double x = gamepad1.left_stick_x * speedMultiplier;
             double rot = gamepad1.right_stick_x * speedMultiplier;
 
-            // ROBOT CENTRIC: robotX = x, robotY = y
-            double robotX = x;
-            double robotY = y;
+            // Field-centric transformation
+            double cosA = Math.cos(heading);
+            double sinA = Math.sin(heading);
+            double robotX = x * cosA - y * sinA;
+            double robotY = x * sinA + y * cosA;
 
             // Swerve Kinematics
             double A = robotX - rot * (WHEELBASE / R);
@@ -104,7 +113,19 @@ public class StableSwerve extends LinearOpMode {
 
             double maxSpeed = Math.max(Math.max(speedFrontLeft, speedFrontRight), Math.max(speedBackLeft, speedBackRight));
 
-            // Normalization is implicit due to scaled inputs
+            // Normalization is still important here, but since the inputs are scaled,
+            // the resulting speeds are already capped by the speedMultiplier.
+            if (maxSpeed > speedMultiplier) {
+                // In a fully scaled system, this should only happen if normalization
+                // is needed relative to the scaled max speed (i.e., when hypot > multiplier),
+                // but since we scaled inputs, normalization primarily handles vector components.
+                // We normalize relative to the maximum possible input (1.0), and the speedMultiplier
+                // acts as the final cap on the inputs.
+                // For simplicity, we can let the normalization handle the scaling implicitly
+                // since speedFrontLeft, etc. will not exceed speedMultiplier.
+                // We will keep the normalization relative to 1.0, but since x, y, rot are scaled
+                // down to speedMultiplier, maxSpeed will never exceed speedMultiplier (or close to it).
+            }
 
             // Steering Update Deadband (Anti-Jitter/Snap-to-Zero)
             if (Math.abs(x) > DRIVE_DEADBAND || Math.abs(y) > DRIVE_DEADBAND || Math.abs(rot) > DRIVE_DEADBAND) {
@@ -116,10 +137,12 @@ public class StableSwerve extends LinearOpMode {
                 speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
             }
 
-            // Lock wheels override
+            // Lock wheels override ('X' formation)
             if (gamepad1.left_stick_button) {
-                targetAngleFL = Math.PI / 4; targetAngleFR = -Math.PI / 4;
-                targetAngleBL = -Math.PI / 4; targetAngleBR = Math.PI / 4;
+                targetAngleFL = Math.PI / 4;
+                targetAngleFR = -Math.PI / 4;
+                targetAngleBL = -Math.PI / 4;
+                targetAngleBR = Math.PI / 4;
                 speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
             }
 
@@ -130,7 +153,7 @@ public class StableSwerve extends LinearOpMode {
             runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBackRight, targetAngleBR);
 
             // Telemetry
-            telemetry.addData("Mode", "ROBOT CENTRIC (Limited)");
+            telemetry.addData("Mode", "DRIVE (Field-Centric)");
             telemetry.addData("Speed Multiplier", "%.2f", speedMultiplier);
             telemetry.addData("Steering kP", STEER_KP);
             telemetry.update();
