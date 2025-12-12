@@ -1,23 +1,26 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-@Disabled
-@TeleOp(name = "stableFieldCentricSwerve", group = "Swerve")
-public class stableFieldCentricSwerve extends LinearOpMode {
+
+@TeleOp(name = "DiamondbackDrive", group = "Swerve")
+public class DiamondbackDrive extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS ---
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu;
+    private DcMotor leftFly, rightFly, intake;
+    private Servo trigger; // RENAMED: Servo is now named 'trigger'
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -31,17 +34,33 @@ public class stableFieldCentricSwerve extends LinearOpMode {
     final double BACK_RIGHT_OFFSET  = 4.8209;
 
     // --- 4. TUNING PARAMETERS ---
-    final double STEER_KP = 0.6; // Reduced for smoother steering
+    final double STEER_KP = 0.6;
     final double DRIVE_DEADBAND = 0.05;
     final double STEER_DEADBAND = 0.05;
 
     // --- 5. SPEED CONTROL CONSTANTS ---
-    final double MAX_SPEED_GLOBAL = 0.8; // 80% maximum speed
-    final double MAX_SPEED_SLOW_MODE = 0.2; // 20% speed when right bumper is held
+    final double MAX_SPEED_GLOBAL = 0.8;
+    final double MAX_SPEED_SLOW_MODE = 0.2;
+    final double TRIGGER_THRESHOLD = 0.5;
 
-    // --- 6. TOGGLE STATE VARIABLES ---
+    // --- 6. MECHANISM DIRECTION REVERSAL (EASY ACCESS) ---
+    final boolean LEFT_FLY_REVERSE    = false;
+    final boolean RIGHT_FLY_REVERSE   = true;
+    final boolean INTAKE_REVERSE      = true;
+
+    // --- 7. SWEEPER SERVO PARAMETERS ---
+    final double SWEEP_DOWN_POSITION = 0.33;
+    final double SWEEP_UP_POSITION   = 0.05; // Adjust as needed for 20 degrees swing
+    final long SWEEP_DELAY_MS = 250; // 0.25 seconds wait
+
+    // --- 8. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
     private boolean rightStickButtonPreviouslyPressed = false;
+    private boolean isFlywheelOn = false;
+    private boolean isIntakeOn = false;
+    private boolean leftTriggerPreviouslyPressed = false;
+    private boolean rightTriggerPreviouslyPressed = false;
+    private boolean aButtonPreviouslyPressed = false;
 
 
     @Override
@@ -54,25 +73,26 @@ public class stableFieldCentricSwerve extends LinearOpMode {
         double headingOffset = 0;
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
 
+        // Initialize servo to the down position
+        trigger.setPosition(SWEEP_DOWN_POSITION);
+
         while (opModeIsActive()) {
 
-            // --- Toggle Logic for Calibration Mode (Right Stick Button) ---
+            // --- Toggle Logic for Calibration Mode ---
             boolean rightStickButtonCurrentlyPressed = gamepad1.right_stick_button;
-
             if (rightStickButtonCurrentlyPressed && !rightStickButtonPreviouslyPressed) {
                 isCalibrationModeActive = !isCalibrationModeActive;
             }
             rightStickButtonPreviouslyPressed = rightStickButtonCurrentlyPressed;
-            // --- End Toggle Logic ---
 
-            // --- SPEED LIMITER LOGIC (NEW) ---
+            // Speed Limiter Logic
             double speedMultiplier = MAX_SPEED_GLOBAL;
             if (gamepad1.right_bumper) {
-                speedMultiplier = MAX_SPEED_SLOW_MODE; // Override to 20%
+                speedMultiplier = MAX_SPEED_SLOW_MODE;
             }
 
-            // Zero Heading
-            if (gamepad1.start) {
+            // Yaw Reset Logic (Y or START button)
+            if (gamepad1.start || gamepad1.y) {
                 headingOffset = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
             }
 
@@ -82,14 +102,35 @@ public class stableFieldCentricSwerve extends LinearOpMode {
                         new DcMotor[]{frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive},
                         new CRServo[]{frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer}
                 );
+                // Kill all mechanisms
+                leftFly.setPower(0);
+                rightFly.setPower(0);
+                intake.setPower(0);
                 continue;
             }
 
-            // --- REGULAR DRIVE MODE (Field-Centric) ---
-            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
+            // --- SWEEPER SERVO TRIGGER (A Button) ---
+            boolean aButtonCurrentlyPressed = gamepad1.a;
+            if (aButtonCurrentlyPressed && !aButtonPreviouslyPressed) {
+                // 1. Sweep Up (20 degrees)
+                trigger.setPosition(SWEEP_UP_POSITION);
+                telemetry.addData("Trigger Servo", "Sweeping UP");
+                telemetry.update();
 
-            // Driving Input
-            // Apply speed multiplier directly to joystick inputs for linear scaling
+                // 2. Wait 0.1 seconds (Blocks code execution for 100ms)
+                sleep(SWEEP_DELAY_MS);
+
+                // 3. Go Back Down
+                trigger.setPosition(SWEEP_DOWN_POSITION);
+                telemetry.addData("Trigger Servo", "Returning DOWN");
+                telemetry.update();
+            }
+            aButtonPreviouslyPressed = aButtonCurrentlyPressed;
+            // --- END SWEEPER SERVO TRIGGER ---
+
+
+            // --- DRIVE INPUTS ---
+            double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
             double y = -gamepad1.left_stick_y * speedMultiplier;
             double x = gamepad1.left_stick_x * speedMultiplier;
             double rot = gamepad1.right_stick_x * speedMultiplier;
@@ -100,7 +141,7 @@ public class stableFieldCentricSwerve extends LinearOpMode {
             double robotX = x * cosA - y * sinA;
             double robotY = x * sinA + y * cosA;
 
-            // Swerve Kinematics
+            // Swerve Kinematics (Unchanged)
             double A = robotX - rot * (WHEELBASE / R);
             double B = robotX + rot * (WHEELBASE / R);
             double C = robotY - rot * (TRACK_WIDTH / R);
@@ -111,24 +152,15 @@ public class stableFieldCentricSwerve extends LinearOpMode {
             double speedFrontRight = Math.hypot(B, C);
             double speedBackLeft   = Math.hypot(A, D);
             double speedBackRight  = Math.hypot(A, C);
-
             double maxSpeed = Math.max(Math.max(speedFrontLeft, speedFrontRight), Math.max(speedBackLeft, speedBackRight));
-
-            // Normalization is still important here, but since the inputs are scaled,
-            // the resulting speeds are already capped by the speedMultiplier.
-            if (maxSpeed > speedMultiplier) {
-                // In a fully scaled system, this should only happen if normalization
-                // is needed relative to the scaled max speed (i.e., when hypot > multiplier),
-                // but since we scaled inputs, normalization primarily handles vector components.
-                // We normalize relative to the maximum possible input (1.0), and the speedMultiplier
-                // acts as the final cap on the inputs.
-                // For simplicity, we can let the normalization handle the scaling implicitly
-                // since speedFrontLeft, etc. will not exceed speedMultiplier.
-                // We will keep the normalization relative to 1.0, but since x, y, rot are scaled
-                // down to speedMultiplier, maxSpeed will never exceed speedMultiplier (or close to it).
+            if (maxSpeed > 1.0) {
+                speedFrontLeft /= maxSpeed;
+                speedFrontRight /= maxSpeed;
+                speedBackLeft /= maxSpeed;
+                speedBackRight /= maxSpeed;
             }
 
-            // Steering Update Deadband (Anti-Jitter/Snap-to-Zero)
+            // Steering Logic (Unchanged)
             if (Math.abs(x) > DRIVE_DEADBAND || Math.abs(y) > DRIVE_DEADBAND || Math.abs(rot) > DRIVE_DEADBAND) {
                 targetAngleFL = Math.atan2(B, D);
                 targetAngleFR = Math.atan2(B, C);
@@ -140,23 +172,43 @@ public class stableFieldCentricSwerve extends LinearOpMode {
 
             // Lock wheels override ('X' formation)
             if (gamepad1.left_stick_button) {
-                targetAngleFL = Math.PI / 4;
-                targetAngleFR = -Math.PI / 4;
-                targetAngleBL = -Math.PI / 4;
-                targetAngleBR = Math.PI / 4;
+                targetAngleFL = Math.PI / 4; targetAngleFR = -Math.PI / 4;
+                targetAngleBL = -Math.PI / 4; targetAngleBR = Math.PI / 4;
                 speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
             }
 
-            // Apply module outputs
+            // Apply swerve module outputs
             runModule(frontLeftDrive, frontLeftSteer, frontLeftEncoder, FRONT_LEFT_OFFSET, speedFrontLeft, targetAngleFL);
             runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, speedFrontRight, targetAngleFR);
             runModule(backLeftDrive, backLeftSteer, backLeftEncoder, BACK_LEFT_OFFSET, speedBackLeft, targetAngleBL);
             runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBackRight, targetAngleBR);
 
+            // --- MECHANISM CONTROL ---
+
+            // Flywheel Toggle (Left Trigger)
+            boolean leftTriggerCurrentlyPressed = gamepad1.left_trigger > TRIGGER_THRESHOLD;
+            if (leftTriggerCurrentlyPressed && !leftTriggerPreviouslyPressed) {
+                isFlywheelOn = !isFlywheelOn;
+            }
+            leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
+
+            leftFly.setPower(isFlywheelOn ? 1.0 : 0);
+            rightFly.setPower(isFlywheelOn ? 1.0 : 0);
+
+            // Intake Toggle (Right Trigger)
+            boolean rightTriggerCurrentlyPressed = gamepad1.right_trigger > TRIGGER_THRESHOLD;
+            if (rightTriggerCurrentlyPressed && !rightTriggerPreviouslyPressed) {
+                isIntakeOn = !isIntakeOn;
+            }
+            rightTriggerPreviouslyPressed = rightTriggerCurrentlyPressed;
+
+            intake.setPower(isIntakeOn ? 1.0 : 0);
+
             // Telemetry
-            telemetry.addData("Mode", "DRIVE (Field-Centric)");
-            telemetry.addData("Speed Multiplier", "%.2f", speedMultiplier);
-            telemetry.addData("Steering kP", STEER_KP);
+            telemetry.addData("Mode", "DiamondbackDrive (Field-Centric)");
+            telemetry.addData("Flywheel", isFlywheelOn ? "ON" : "OFF");
+            telemetry.addData("Intake", isIntakeOn ? "ON" : "OFF");
+            telemetry.addData("Trigger Pos", trigger.getPosition());
             telemetry.update();
         }
     }
@@ -164,7 +216,7 @@ public class stableFieldCentricSwerve extends LinearOpMode {
     // --- HELPER METHODS ---
 
     private void initializeHardware() {
-        // ... (Hardware mapping)
+        // --- Swerve Drive Hardware ---
         frontLeftDrive  = hardwareMap.get(DcMotor.class, "frontLeftDrive");
         frontRightDrive = hardwareMap.get(DcMotor.class, "frontRightDrive");
         backLeftDrive   = hardwareMap.get(DcMotor.class, "backLeftDrive");
@@ -179,6 +231,13 @@ public class stableFieldCentricSwerve extends LinearOpMode {
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
         imu = hardwareMap.get(IMU.class, "imu");
 
+        // --- Mechanism Hardware ---
+        leftFly = hardwareMap.get(DcMotor.class, "leftFly");
+        rightFly = hardwareMap.get(DcMotor.class, "rightFly");
+        intake = hardwareMap.get(DcMotor.class, "intake");
+        trigger = hardwareMap.get(Servo.class, "trigger"); // RENAMED: Servo Mapping
+
+
         IMU.Parameters parameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
                         RevHubOrientationOnRobot.LogoFacingDirection.UP,
@@ -187,17 +246,22 @@ public class stableFieldCentricSwerve extends LinearOpMode {
         );
         imu.initialize(parameters);
 
-        // Drive Motor Direction Fix
+        // --- Swerve Drive Motor Direction Fix ---
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
         backRightDrive.setDirection(DcMotor.Direction.FORWARD);
 
-        resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive);
+        // --- Mechanism Motor Direction Fix (Controlled by toggles at the top) ---
+        leftFly.setDirection(LEFT_FLY_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+        rightFly.setDirection(RIGHT_FLY_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+        intake.setDirection(INTAKE_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+
+        resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, leftFly, rightFly, intake);
     }
 
     private void runModule(DcMotor driveMotor, CRServo steerServo, AnalogInput encoder, double encoderOffset, double speed, double targetAngle) {
-
+        // Swerve module control logic (unchanged)
         double rawAngle = getRawAngle(encoder);
         double currentAngle = rawAngle - encoderOffset;
         currentAngle = wrapAngle(currentAngle);
