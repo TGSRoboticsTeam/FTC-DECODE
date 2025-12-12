@@ -124,7 +124,7 @@ public class DiamondbackAutoShooter extends LinearOpMode {
         intake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         // Initialize IMU (Even if not used for movement, it's good practice for consistency)
-        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.UP;
+        RevHubOrientationOnRobot.LogoFacingDirection logoDirection = RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
         RevHubOrientationOnRobot.UsbFacingDirection  usbDirection  = RevHubOrientationOnRobot.UsbFacingDirection.UP;
         IMU.Parameters parameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(logoDirection, usbDirection)
