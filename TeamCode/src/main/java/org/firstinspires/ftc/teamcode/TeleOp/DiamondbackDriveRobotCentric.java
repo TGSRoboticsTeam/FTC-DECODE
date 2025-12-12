@@ -264,6 +264,7 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
 
             double robotVoltage = voltageSensor.getVoltage();
             double featheredPower = FLYWHEEL_MINIMUM + (robotVoltage - VOLTAGE_MINIMUM) * (FLYWHEEL_MAXIMUM - FLYWHEEL_MINIMUM) / (VOLTAGE_MAXIMIM - VOLTAGE_MINIMUM);
+            featheredPower = Math.max(FLYWHEEL_MINIMUM, (Math.min(featheredPower, FLYWHEEL_MAXIMUM)));
 
             leftFly.setPower(isFlywheelOn ? featheredPower : 0);
             rightFly.setPower(isFlywheelOn ? featheredPower : 0);
