@@ -116,7 +116,7 @@ public class DiamondbackAutoShooter extends LinearOpMode {
         // Set Zero Power Behavior
         leftFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         rightFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);x
 
         // Ensure motors are running without encoders for continuous power control
         leftFly.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
