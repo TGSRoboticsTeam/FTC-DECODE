@@ -10,6 +10,8 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 // IMU is no longer strictly needed for drive, but kept for initialization if mechanisms use it.
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 @Disabled
 @TeleOp(name = "DiamondbackDriveRobotCentric", group = "Swerve")
@@ -20,6 +22,7 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu; // Kept IMU object, but drive logic ignores its data
+    private VoltageSensor voltageSensor;
     private DcMotor leftFly, rightFly, intake;
     private Servo trigger;
     private Servo adjuster;
@@ -86,6 +89,11 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     private double lightSweepPosition = LIGHT_MIN_POS;
     private boolean isLightSweepingUp = true;
 
+    // Feather shooting
+    final double VOLTAGE_MINIMUM = 12.5;
+    final double VOLTAGE_MAXIMIM = 13.6;
+    final double FLYWHEEL_MINIMUM = 8.5;
+    final double FLYWHEEL_MAXIMUM = 1.0;
 
     @Override
     public void runOpMode() {
@@ -254,8 +262,12 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
             }
             leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
 
-            leftFly.setPower(isFlywheelOn ? 1.0 : 0);
-            rightFly.setPower(isFlywheelOn ? 1.0 : 0);
+            double robotVoltage = voltageSensor.getVoltage();
+            double featheredPower = FLYWHEEL_MINIMUM + (robotVoltage - VOLTAGE_MINIMUM) * (FLYWHEEL_MAXIMUM - FLYWHEEL_MINIMUM) / (VOLTAGE_MAXIMIM - VOLTAGE_MINIMUM);
+            featheredPower = Math.max(FLYWHEEL_MINIMUM, (Math.min(featheredPower, FLYWHEEL_MAXIMUM)));
+
+            leftFly.setPower(isFlywheelOn ? featheredPower : 0);
+            rightFly.setPower(isFlywheelOn ? featheredPower : 0);
 
             // Intake Toggle (Right Trigger)
             boolean rightTriggerCurrentlyPressed = gamepad1.right_trigger > TRIGGER_THRESHOLD;
@@ -288,6 +300,7 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
         frontRightEncoder = hardwareMap.get(AnalogInput.class, "frontRightEncoder");
         backLeftEncoder   = hardwareMap.get(AnalogInput.class, "backLeftEncoder");
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
+        voltageSensor = hardwareMap.voltageSensor.iterator().next();
         imu = hardwareMap.get(IMU.class, "imu");
 
         // --- Mechanism Hardware ---
