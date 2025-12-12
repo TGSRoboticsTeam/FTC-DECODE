@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-@TeleOp(name = "StableSwerve_Inverted", group = "Swerve")
+@TeleOp(name = "StableSwerve_Final", group = "Swerve")
 public class StableSwerve extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS ---
@@ -24,7 +24,6 @@ public class StableSwerve extends LinearOpMode {
     final double R = Math.hypot(TRACK_WIDTH, WHEELBASE);
 
     // --- 3. CRITICAL: OFFSETS (Using your measured values) ---
-    // These values are based on the Raw Encoder Values in your image.
     final double FRONT_LEFT_OFFSET  = 5.2417;
     final double FRONT_RIGHT_OFFSET = 5.7881;
     final double BACK_LEFT_OFFSET   = 2.4143;
@@ -75,7 +74,7 @@ public class StableSwerve extends LinearOpMode {
                 continue;
             }
 
-            // --- REGULAR DRIVE MODE ---
+            // --- REGULAR DRIVE MODE (Field-Centric) ---
             double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
 
             // Driving Input
@@ -135,8 +134,8 @@ public class StableSwerve extends LinearOpMode {
             runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBackRight, targetAngleBR);
 
             // Telemetry
-            telemetry.addData("Mode", "DRIVE");
-            telemetry.addData("Status", "Trying to hold position...");
+            telemetry.addData("Mode", "DRIVE (Field-Centric)");
+            telemetry.addData("Status", "Stable with Fixed Offsets.");
             telemetry.update();
         }
     }
@@ -167,6 +166,15 @@ public class StableSwerve extends LinearOpMode {
         );
         imu.initialize(parameters);
 
+        // --- FINAL FIX: SET DRIVE MOTOR DIRECTION BASED ON LEFT SIDE REVERSAL ---
+        // Left side motors were reported to be backward, so we reverse their direction.
+        frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+
+        // Right side motors should run FORWARD to match the left side's reversed orientation.
+        frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
+        backRightDrive.setDirection(DcMotor.Direction.FORWARD);
+
         resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive);
     }
 
@@ -185,7 +193,7 @@ public class StableSwerve extends LinearOpMode {
 
         double servoPower = STEER_KP * delta;
 
-        // --- FINAL FIX: INVERT SERVO POWER DIRECTION ---
+        // Steering Fix: Invert servo power to match physical rotation
         servoPower *= -1;
 
         if (Math.abs(servoPower) < STEER_DEADBAND) servoPower = 0;
