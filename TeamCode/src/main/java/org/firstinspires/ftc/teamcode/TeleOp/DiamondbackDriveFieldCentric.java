@@ -9,6 +9,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 @TeleOp(name = "DiamondbackDriveFieldCentric", group = "Swerve")
@@ -19,6 +21,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu; // IMU is NOW CRITICAL for Field-Centric Drive
+    private VoltageSensor voltageSensor;
     private DcMotor leftFly, rightFly, intake;
     private Servo trigger;
     private Servo adjuster;
@@ -67,6 +70,12 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     final double LIGHT_MAX_POS = 0.772;
     final double LIGHT_SWEEP_STEP = 0.001;
 
+    // Flywheel feathering
+    final double VOLTAGE_MINIMUM = 12.5;
+    final double VOLTAGE_MAXIMIM = 13.6;
+    final double FLYWHEEL_MINIMUM = 8.5;
+    final double FLYWHEEL_MAXIMUM = 1.0;
+
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
     private boolean rightStickButtonPreviouslyPressed = false;
@@ -76,9 +85,6 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     private boolean rightTriggerPreviouslyPressed = false;
     private boolean aButtonPreviouslyPressed = false;
     private boolean yButtonPreviouslyPressed = false; // Added for Yaw Reset
-
-    // Field-Centric Variable
-    private double headingOffset = 0.0; // Offset to define "forward" relative to field
 
     // Light Sweep State Variables
     private double lightSweepPosition = LIGHT_MIN_POS;
@@ -122,14 +128,11 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             boolean yButtonCurrentlyPressed = gamepad1.y;
             if (yButtonCurrentlyPressed && !yButtonPreviouslyPressed) {
                 imu.resetYaw();
-                headingOffset = 0.0; // Reset offset, since yaw is reset
-                telemetry.addData("Field-Centric", "Yaw Reset to 0 degrees.");
-                telemetry.update();
             }
             yButtonPreviouslyPressed = yButtonCurrentlyPressed;
 
             // Get current heading from IMU
-            double robotYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
+            double robotYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
             // --- CALIBRATION MODE CHECK ---
             if (isCalibrationModeActive) {
@@ -265,8 +268,11 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             }
             leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
 
-            leftFly.setPower(isFlywheelOn ? 1.0 : 0);
-            rightFly.setPower(isFlywheelOn ? 1.0 : 0);
+            double robotVoltage = voltageSensor.getVoltage();
+            double featheredPower = FLYWHEEL_MINIMUM + (robotVoltage - VOLTAGE_MINIMUM) * (FLYWHEEL_MAXIMUM - FLYWHEEL_MINIMUM) / (VOLTAGE_MAXIMIM - VOLTAGE_MINIMUM);
+
+            leftFly.setPower(isFlywheelOn ? featheredPower : 0);
+            rightFly.setPower(isFlywheelOn ? featheredPower : 0);
 
             // Intake Toggle (Right Trigger)
             boolean rightTriggerCurrentlyPressed = gamepad1.right_trigger > TRIGGER_THRESHOLD;
@@ -302,6 +308,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
         frontRightEncoder = hardwareMap.get(AnalogInput.class, "frontRightEncoder");
         backLeftEncoder   = hardwareMap.get(AnalogInput.class, "backLeftEncoder");
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
+        voltageSensor = hardwareMap.voltageSensor.iterator().next();
         imu = hardwareMap.get(IMU.class, "imu");
 
         // --- Mechanism Hardware ---
