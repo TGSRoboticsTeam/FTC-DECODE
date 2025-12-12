@@ -21,6 +21,8 @@ public class DiamondbackDrive extends LinearOpMode {
     private IMU imu;
     private DcMotor leftFly, rightFly, intake;
     private Servo trigger;
+    private Servo adjuster;
+    private Servo light; // CHANGED: Now a standard Servo for sweeping
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -48,12 +50,26 @@ public class DiamondbackDrive extends LinearOpMode {
     final boolean RIGHT_FLY_REVERSE   = true;
     final boolean INTAKE_REVERSE      = true;
 
-    // --- 7. SWEEPER SERVO PARAMETERS ---
+    // --- 7. SERVO PARAMETERS ---
     final double SWEEP_DOWN_POSITION = 0.33;
     final double SWEEP_UP_POSITION   = 0.05;
     final long SWEEP_DELAY_MS = 250;
 
-    // --- 8. TOGGLE STATE VARIABLES ---
+    // Turret Tilt Control Parameters
+    final double INITIAL_TURRET_TILT = 0.5;
+    final double TURRET_TILT_STEP = 0.005;
+
+    // Turret Tilt Limits (Min/Max positions for the servo)
+    final double MIN_TURRET_TILT = 0.3;
+    final double MAX_TURRET_TILT = 0.7;
+
+    // --- 8. LIGHT SWEEP PARAMETERS (NEW) ---
+    final double LIGHT_MIN_POS = 0.277; // Minimum position for the light servo
+    final double LIGHT_MAX_POS = 0.722; // Maximum position for the light servo
+    final double LIGHT_SWEEP_STEP = 0.001; // Small step for a slow sweep
+
+
+    // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
     private boolean rightStickButtonPreviouslyPressed = false;
     private boolean isFlywheelOn = false;
@@ -61,6 +77,10 @@ public class DiamondbackDrive extends LinearOpMode {
     private boolean leftTriggerPreviouslyPressed = false;
     private boolean rightTriggerPreviouslyPressed = false;
     private boolean aButtonPreviouslyPressed = false;
+
+    // Light Sweep State Variables (NEW)
+    private double lightSweepPosition = LIGHT_MIN_POS;
+    private boolean isLightSweepingUp = true;
 
 
     @Override
@@ -72,9 +92,12 @@ public class DiamondbackDrive extends LinearOpMode {
 
         double headingOffset = 0;
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
+        double turretTilt = INITIAL_TURRET_TILT;
 
-        // Initialize servo to the down position
+        // Initialize servos
         trigger.setPosition(SWEEP_DOWN_POSITION);
+        adjuster.setPosition(turretTilt);
+        light.setPosition(lightSweepPosition); // Initialize light servo position
 
         while (opModeIsActive()) {
 
@@ -112,30 +135,50 @@ public class DiamondbackDrive extends LinearOpMode {
             // --- SWEEPER SERVO TRIGGER (A Button) ---
             boolean aButtonCurrentlyPressed = gamepad1.a;
             if (aButtonCurrentlyPressed && !aButtonPreviouslyPressed) {
-                // 1. Sweep Up (20 degrees)
                 trigger.setPosition(SWEEP_UP_POSITION);
-                telemetry.addData("Trigger Servo", "Sweeping UP");
-                telemetry.update();
-
-                // 2. Wait 0.25 seconds (Blocks code execution for 250ms)
                 sleep(SWEEP_DELAY_MS);
-
-                // 3. Go Back Down
                 trigger.setPosition(SWEEP_DOWN_POSITION);
-                telemetry.addData("Trigger Servo", "Returning DOWN");
-                telemetry.update();
             }
             aButtonPreviouslyPressed = aButtonCurrentlyPressed;
-            // --- END SWEEPER SERVO TRIGGER ---
+
+            // --- TURRET TILT CONTROL (D-Pad) ---
+            boolean tiltUp = gamepad1.dpad_up;
+            boolean tiltDown = gamepad1.dpad_down;
+
+            if (tiltDown && turretTilt > MIN_TURRET_TILT) {
+                turretTilt -= TURRET_TILT_STEP;
+            } else if (tiltUp && turretTilt < MAX_TURRET_TILT) {
+                turretTilt += TURRET_TILT_STEP;
+            }
+
+            adjuster.setPosition(turretTilt);
+            // --- END TURRET TILT CONTROL ---
 
 
-            // --- DRIVE INPUTS ---
+            // --- LIGHT SERVO SWEEP (NEW) ---
+            if (isLightSweepingUp) {
+                lightSweepPosition += LIGHT_SWEEP_STEP;
+                if (lightSweepPosition >= LIGHT_MAX_POS) {
+                    lightSweepPosition = LIGHT_MAX_POS;
+                    isLightSweepingUp = false;
+                }
+            } else {
+                lightSweepPosition -= LIGHT_SWEEP_STEP;
+                if (lightSweepPosition <= LIGHT_MIN_POS) {
+                    lightSweepPosition = LIGHT_MIN_POS;
+                    isLightSweepingUp = true;
+                }
+            }
+            light.setPosition(lightSweepPosition);
+            // --- END LIGHT SERVO SWEEP ---
+
+
+            // --- DRIVE INPUTS (Unchanged) ---
             double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) - headingOffset;
             double y = -gamepad1.left_stick_y * speedMultiplier;
             double x = gamepad1.left_stick_x * speedMultiplier;
             double rot = gamepad1.right_stick_x * speedMultiplier;
 
-            // Field-centric transformation
             double cosA = Math.cos(heading);
             double sinA = Math.sin(heading);
             double robotX = x * cosA - y * sinA;
@@ -178,10 +221,7 @@ public class DiamondbackDrive extends LinearOpMode {
             }
 
             // Apply swerve module outputs
-            runModule(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer, frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder, speedFrontLeft, speedFrontRight, speedBackLeft, speedBackRight, targetAngleFL, targetAngleFR, targetAngleBL, targetAngleBR);
-
-            // Apply module outputs (simplified runModule call used here for brevity, keeping original structure)
-            runModule(frontLeftDrive, frontLeftSteer, frontLeftEncoder, FRONT_LEFT_OFFSET, speedFrontLeft, targetAngleFL);
+            runModule(frontLeftDrive, frontRightSteer, frontLeftEncoder, FRONT_LEFT_OFFSET, speedFrontLeft, targetAngleFL);
             runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, speedFrontRight, targetAngleFR);
             runModule(backLeftDrive, backLeftSteer, backLeftEncoder, BACK_LEFT_OFFSET, speedBackLeft, targetAngleBL);
             runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBackRight, targetAngleBR);
@@ -195,7 +235,6 @@ public class DiamondbackDrive extends LinearOpMode {
             }
             leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
 
-            // Flywheels will now COAST to a stop when set to power 0.
             leftFly.setPower(isFlywheelOn ? 1.0 : 0);
             rightFly.setPower(isFlywheelOn ? 1.0 : 0);
 
@@ -212,7 +251,9 @@ public class DiamondbackDrive extends LinearOpMode {
             telemetry.addData("Mode", "DiamondbackDrive (Field-Centric)");
             telemetry.addData("Flywheel", isFlywheelOn ? "ON (Coast Stop)" : "OFF (Coast Stop)");
             telemetry.addData("Intake", isIntakeOn ? "ON" : "OFF");
-            telemetry.addData("Trigger Pos", trigger.getPosition());
+            telemetry.addData("Turret Tilt", "%.3f", turretTilt);
+            telemetry.addData("Light Servo Pos", "%.3f", lightSweepPosition);
+            telemetry.addData("Light Direction", isLightSweepingUp ? "UP" : "DOWN");
             telemetry.update();
         }
     }
@@ -240,7 +281,9 @@ public class DiamondbackDrive extends LinearOpMode {
         rightFly = hardwareMap.get(DcMotor.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
         trigger = hardwareMap.get(Servo.class, "trigger");
+        adjuster = hardwareMap.get(Servo.class, "adjuster");
 
+        light = hardwareMap.get(Servo.class, "light"); // CHANGED: Hardware mapping to Servo
 
         IMU.Parameters parameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
@@ -261,19 +304,14 @@ public class DiamondbackDrive extends LinearOpMode {
         rightFly.setDirection(RIGHT_FLY_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
         intake.setDirection(INTAKE_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
 
-        // Set Swerve Drive motors to BRAKE (standard for non-swerve/drives)
+        // Set Zero Power Behavior
         frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        // *** NEW: Set Flywheel motors to FLOAT (COAST) ***
         leftFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         rightFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-
-        // Set Intake motor to BRAKE (to prevent coasting after intake is turned off)
         intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
 
         // Reset RunMode for all DC motors
         resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, leftFly, rightFly, intake);
