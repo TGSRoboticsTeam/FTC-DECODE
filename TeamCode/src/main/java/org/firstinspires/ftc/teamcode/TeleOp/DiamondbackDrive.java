@@ -20,7 +20,7 @@ public class DiamondbackDrive extends LinearOpMode {
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu;
     private DcMotor leftFly, rightFly, intake;
-    private Servo trigger; // RENAMED: Servo is now named 'trigger'
+    private Servo trigger;
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -50,8 +50,8 @@ public class DiamondbackDrive extends LinearOpMode {
 
     // --- 7. SWEEPER SERVO PARAMETERS ---
     final double SWEEP_DOWN_POSITION = 0.33;
-    final double SWEEP_UP_POSITION   = 0.05; // Adjust as needed for 20 degrees swing
-    final long SWEEP_DELAY_MS = 250; // 0.25 seconds wait
+    final double SWEEP_UP_POSITION   = 0.05;
+    final long SWEEP_DELAY_MS = 250;
 
     // --- 8. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -117,7 +117,7 @@ public class DiamondbackDrive extends LinearOpMode {
                 telemetry.addData("Trigger Servo", "Sweeping UP");
                 telemetry.update();
 
-                // 2. Wait 0.1 seconds (Blocks code execution for 100ms)
+                // 2. Wait 0.25 seconds (Blocks code execution for 250ms)
                 sleep(SWEEP_DELAY_MS);
 
                 // 3. Go Back Down
@@ -178,6 +178,9 @@ public class DiamondbackDrive extends LinearOpMode {
             }
 
             // Apply swerve module outputs
+            runModule(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer, frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder, speedFrontLeft, speedFrontRight, speedBackLeft, speedBackRight, targetAngleFL, targetAngleFR, targetAngleBL, targetAngleBR);
+
+            // Apply module outputs (simplified runModule call used here for brevity, keeping original structure)
             runModule(frontLeftDrive, frontLeftSteer, frontLeftEncoder, FRONT_LEFT_OFFSET, speedFrontLeft, targetAngleFL);
             runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, speedFrontRight, targetAngleFR);
             runModule(backLeftDrive, backLeftSteer, backLeftEncoder, BACK_LEFT_OFFSET, speedBackLeft, targetAngleBL);
@@ -192,6 +195,7 @@ public class DiamondbackDrive extends LinearOpMode {
             }
             leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
 
+            // Flywheels will now COAST to a stop when set to power 0.
             leftFly.setPower(isFlywheelOn ? 1.0 : 0);
             rightFly.setPower(isFlywheelOn ? 1.0 : 0);
 
@@ -206,7 +210,7 @@ public class DiamondbackDrive extends LinearOpMode {
 
             // Telemetry
             telemetry.addData("Mode", "DiamondbackDrive (Field-Centric)");
-            telemetry.addData("Flywheel", isFlywheelOn ? "ON" : "OFF");
+            telemetry.addData("Flywheel", isFlywheelOn ? "ON (Coast Stop)" : "OFF (Coast Stop)");
             telemetry.addData("Intake", isIntakeOn ? "ON" : "OFF");
             telemetry.addData("Trigger Pos", trigger.getPosition());
             telemetry.update();
@@ -235,7 +239,7 @@ public class DiamondbackDrive extends LinearOpMode {
         leftFly = hardwareMap.get(DcMotor.class, "leftFly");
         rightFly = hardwareMap.get(DcMotor.class, "rightFly");
         intake = hardwareMap.get(DcMotor.class, "intake");
-        trigger = hardwareMap.get(Servo.class, "trigger"); // RENAMED: Servo Mapping
+        trigger = hardwareMap.get(Servo.class, "trigger");
 
 
         IMU.Parameters parameters = new IMU.Parameters(
@@ -257,6 +261,21 @@ public class DiamondbackDrive extends LinearOpMode {
         rightFly.setDirection(RIGHT_FLY_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
         intake.setDirection(INTAKE_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
 
+        // Set Swerve Drive motors to BRAKE (standard for non-swerve/drives)
+        frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        // *** NEW: Set Flywheel motors to FLOAT (COAST) ***
+        leftFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+        rightFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        // Set Intake motor to BRAKE (to prevent coasting after intake is turned off)
+        intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+
+        // Reset RunMode for all DC motors
         resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive, leftFly, rightFly, intake);
     }
 
@@ -292,7 +311,6 @@ public class DiamondbackDrive extends LinearOpMode {
 
     private void resetMotors(DcMotor... motors) {
         for (DcMotor m : motors) {
-            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
     }
