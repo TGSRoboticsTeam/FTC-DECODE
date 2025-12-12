@@ -22,7 +22,7 @@ public class DiamondbackDrive extends LinearOpMode {
     private DcMotor leftFly, rightFly, intake;
     private Servo trigger;
     private Servo adjuster;
-    private Servo light; // CHANGED: Now a standard Servo for sweeping
+    private Servo light;
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -63,11 +63,10 @@ public class DiamondbackDrive extends LinearOpMode {
     final double MIN_TURRET_TILT = 0.3;
     final double MAX_TURRET_TILT = 0.7;
 
-    // --- 8. LIGHT SWEEP PARAMETERS (NEW) ---
-    final double LIGHT_MIN_POS = 0.277; // Minimum position for the light servo
-    final double LIGHT_MAX_POS = 0.722; // Maximum position for the light servo
-    final double LIGHT_SWEEP_STEP = 0.001; // Small step for a slow sweep
-
+    // --- 8. LIGHT SWEEP PARAMETERS ---
+    final double LIGHT_MIN_POS = 0.277;
+    final double LIGHT_MAX_POS = 0.772;
+    final double LIGHT_SWEEP_STEP = 0.001;
 
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -78,7 +77,7 @@ public class DiamondbackDrive extends LinearOpMode {
     private boolean rightTriggerPreviouslyPressed = false;
     private boolean aButtonPreviouslyPressed = false;
 
-    // Light Sweep State Variables (NEW)
+    // Light Sweep State Variables
     private double lightSweepPosition = LIGHT_MIN_POS;
     private boolean isLightSweepingUp = true;
 
@@ -97,7 +96,7 @@ public class DiamondbackDrive extends LinearOpMode {
         // Initialize servos
         trigger.setPosition(SWEEP_DOWN_POSITION);
         adjuster.setPosition(turretTilt);
-        light.setPosition(lightSweepPosition); // Initialize light servo position
+        light.setPosition(lightSweepPosition);
 
         while (opModeIsActive()) {
 
@@ -155,7 +154,7 @@ public class DiamondbackDrive extends LinearOpMode {
             // --- END TURRET TILT CONTROL ---
 
 
-            // --- LIGHT SERVO SWEEP (NEW) ---
+            // --- LIGHT SERVO SWEEP ---
             if (isLightSweepingUp) {
                 lightSweepPosition += LIGHT_SWEEP_STEP;
                 if (lightSweepPosition >= LIGHT_MAX_POS) {
@@ -249,6 +248,7 @@ public class DiamondbackDrive extends LinearOpMode {
 
             // Telemetry
             telemetry.addData("Mode", "DiamondbackDrive (Field-Centric)");
+            telemetry.addData("IMU Orientation Test", "Logo: LEFT, USB: RIGHT");
             telemetry.addData("Flywheel", isFlywheelOn ? "ON (Coast Stop)" : "OFF (Coast Stop)");
             telemetry.addData("Intake", isIntakeOn ? "ON" : "OFF");
             telemetry.addData("Turret Tilt", "%.3f", turretTilt);
@@ -282,13 +282,15 @@ public class DiamondbackDrive extends LinearOpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         trigger = hardwareMap.get(Servo.class, "trigger");
         adjuster = hardwareMap.get(Servo.class, "adjuster");
+        light = hardwareMap.get(Servo.class, "light");
 
-        light = hardwareMap.get(Servo.class, "light"); // CHANGED: Hardware mapping to Servo
-
+        // CRITICAL: IMU ORIENTATION SETUP
+        // TESTING FIX: Based on 90-degree error.
+        // Rotation changed from UP to RIGHT to compensate for the observed 90-degree error.
         IMU.Parameters parameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                        RevHubOrientationOnRobot.UsbFacingDirection.FORWARD
+                        RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
+                        RevHubOrientationOnRobot.UsbFacingDirection.RIGHT    // Test Fix for 90-degree inversion
                 )
         );
         imu.initialize(parameters);
