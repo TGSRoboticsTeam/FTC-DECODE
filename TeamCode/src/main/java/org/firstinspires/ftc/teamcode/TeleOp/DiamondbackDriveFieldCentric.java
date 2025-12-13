@@ -47,7 +47,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     final double MAX_SPEED_SLOW_MODE = 0.2;
     final double TRIGGER_THRESHOLD = 0.5;
     final double FULL_FLYWHEEL_POWER = 1.0;
-    final double SLOW_FLYWHEEL_POWER = 0.5; // New constant for D-Pad Left control
+    final double SLOW_FLYWHEEL_POWER = 0.75;
 
     // --- 6. MECHANISM DIRECTION REVERSAL (EASY ACCESS) ---
     final boolean LEFT_FLY_REVERSE    = false;
@@ -65,9 +65,13 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     final double MIN_TURRET_TILT = 0.01;
     final double MAX_TURRET_TILT = 0.99;
 
-    // --- 8. LIGHT SWEEP PARAMETERS (Modified to be fixed positions) ---
-    final double LIGHT_OFF_POSITION = 0.277; // LIGHT_MIN_POS from previous code
-    final double LIGHT_ON_POSITION = 0.45;    // New position when launcher is ON
+    // --- 8. LIGHT SWEEP PARAMETERS (Modified for 3 states) ---
+    // Assuming 2.8 -> 0.28 (Default/Off)
+    final double LIGHT_DEFAULT_POSITION = 0.28;
+    // Keeping 0.5 -> 0.45 (Full Power - from previous code)
+    final double LIGHT_FULL_POWER_POSITION = 0.45;
+    // Assuming 3.88 -> 0.388 (Partial Power)
+    final double LIGHT_PARTIAL_POSITION = 0.388;
 
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -77,12 +81,9 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     private boolean leftTriggerPreviouslyPressed = false;
     private boolean rightTriggerPreviouslyPressed = false;
     private boolean aButtonPreviouslyPressed = false;
-    private boolean yButtonPreviouslyPressed = false; // Yaw Reset State
-    // NEW TOGGLE VARIABLE FOR POWER ADJUSTMENT
+    private boolean yButtonPreviouslyPressed = false;
     private boolean isLowPowerMode = false;
     private boolean dpadLeftPreviouslyPressed = false;
-
-    // Light Sweep State Variables (Removed: isLightSweepingUp, lightSweepPosition)
 
 
     @Override
@@ -102,7 +103,8 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
         // Initialize servos
         trigger.setPosition(SWEEP_DOWN_POSITION);
         adjuster.setPosition(turretTilt);
-        light.setPosition(LIGHT_OFF_POSITION); // Initialize light to the 'Off' position
+        // Initialize light to the new default position
+        light.setPosition(LIGHT_DEFAULT_POSITION);
 
         while (opModeIsActive()) {
 
@@ -239,7 +241,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             }
             leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
 
-            // --- NEW: POWER ADJUSTMENT TOGGLE (Gamepad 1 D-Pad Left) ---
+            // --- POWER ADJUSTMENT TOGGLE (Gamepad 1 D-Pad Left) ---
             if (dpadLeft && !dpadLeftPreviouslyPressed) {
                 isLowPowerMode = !isLowPowerMode;
             }
@@ -248,9 +250,9 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             // 2. Determine Flywheel Power
             if (isFlywheelOn) {
                 if (isLowPowerMode) {
-                    currentFlywheelPower = SLOW_FLYWHEEL_POWER; // Low power mode is ON (50%)
+                    currentFlywheelPower = SLOW_FLYWHEEL_POWER;
                 } else {
-                    currentFlywheelPower = FULL_FLYWHEEL_POWER; // Low power mode is OFF (100%)
+                    currentFlywheelPower = FULL_FLYWHEEL_POWER;
                 }
             } else {
                 currentFlywheelPower = 0.0;
@@ -270,11 +272,16 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             intake.setPower(isIntakeOn ? 1.0 : 0);
 
 
-            // --- LIGHT SERVO CONTROL (NEW LOGIC) ---
-            if (isFlywheelOn) {
-                light.setPosition(LIGHT_ON_POSITION);
+            // --- LIGHT SERVO CONTROL (UPDATED 3-STATE LOGIC) ---
+            if (currentFlywheelPower >= FULL_FLYWHEEL_POWER) {
+                // If at FULL power (1.0), use the full power position (0.45)
+                light.setPosition(LIGHT_FULL_POWER_POSITION);
+            } else if (currentFlywheelPower > 0.0) {
+                // If flywheel is ON but NOT full power (i.e., partial power 0.5), use the partial position (0.388)
+                light.setPosition(LIGHT_PARTIAL_POSITION);
             } else {
-                light.setPosition(LIGHT_OFF_POSITION);
+                // If flywheel is OFF (0.0 power), use the default position (0.28)
+                light.setPosition(LIGHT_DEFAULT_POSITION);
             }
 
 

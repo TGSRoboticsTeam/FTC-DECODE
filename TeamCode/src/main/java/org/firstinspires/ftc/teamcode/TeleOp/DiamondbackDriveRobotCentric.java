@@ -393,12 +393,12 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
         for (DcMotor motor : driveMotors) { motor.setPower(0); }
         for (CRServo servo : steerServos) { servo.setPower(0); }
 
-        telemetry.addData("Mode", "**CALIBRATION - PID DISABLED**");
-        telemetry.addData("FL Raw Angle", getRawAngle(frontLeftEncoder));
-        telemetry.addData("FR Raw Angle", getRawAngle(frontRightEncoder));
-        telemetry.addData("BL Raw Angle", getRawAngle(backLeftEncoder));
-        telemetry.addData("BR Raw Angle", getRawAngle(backRightEncoder));
-        telemetry.addData("Exit", "Press Right Stick Button (R3) to EXIT.");
+        //telemetry.addData("Mode", "**CALIBRATION - PID DISABLED**");
+       // telemetry.addData("FL Raw Angle", getRawAngle(frontLeftEncoder));
+       // telemetry.addData("FR Raw Angle", getRawAngle(frontRightEncoder));
+       // telemetry.addData("BL Raw Angle", getRawAngle(backLeftEncoder));
+      //  telemetry.addData("BR Raw Angle", getRawAngle(backRightEncoder));
+      //  telemetry.addData("Exit", "Press Right Stick Button (R3) to EXIT.");
         telemetry.update();
     }
 }
