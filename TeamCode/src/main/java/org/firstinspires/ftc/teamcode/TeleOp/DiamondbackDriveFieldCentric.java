@@ -69,9 +69,9 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     // Assuming 2.8 -> 0.28 (Default/Off)
     final double LIGHT_DEFAULT_POSITION = 0.28;
     // Keeping 0.5 -> 0.45 (Full Power - from previous code)
-    final double LIGHT_FULL_POWER_POSITION = 0.45;
+    final double LIGHT_FULL_POWER_POSITION = 0.5;
     // Assuming 3.88 -> 0.388 (Partial Power)
-    final double LIGHT_PARTIAL_POSITION = 0.388;
+    final double LIGHT_PARTIAL_POSITION = 0.35;
 
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -113,11 +113,11 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
 
 
             // --- Toggle Logic for Calibration Mode (Gamepad 1 R3) ---
-            boolean rightStickButtonCurrentlyPressed = gamepad1.right_stick_button;
-            if (rightStickButtonCurrentlyPressed && !rightStickButtonPreviouslyPressed) {
-                isCalibrationModeActive = !isCalibrationModeActive;
-            }
-            rightStickButtonPreviouslyPressed = rightStickButtonCurrentlyPressed;
+          //  boolean rightStickButtonCurrentlyPressed = gamepad1.right_stick_button;
+           // if (rightStickButtonCurrentlyPressed && !rightStickButtonPreviouslyPressed) {
+           //     isCalibrationModeActive = !isCalibrationModeActive;
+         //   }
+         //   rightStickButtonPreviouslyPressed = rightStickButtonCurrentlyPressed;
 
             // Speed Limiter Logic (Gamepad 1 Right Bumper)
             double speedMultiplier = MAX_SPEED_GLOBAL;
