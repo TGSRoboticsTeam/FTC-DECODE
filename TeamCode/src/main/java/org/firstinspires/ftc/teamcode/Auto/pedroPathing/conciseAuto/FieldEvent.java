@@ -13,6 +13,7 @@ public class FieldEvent {
     private static HardwareMap hardwareMap;
     private static RevBlinkinLedDriver blinkinLedDriver;
     private static RevBlinkinLedDriver.BlinkinPattern pattern;
+    private static Servo light;
     private static Timer timer;
     private static double duration;
     private static DcMotor leftFlywheel;
@@ -28,6 +29,7 @@ public class FieldEvent {
         rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
+        light = hardwareMap.get(Servo.class, "light");
         // You can initialize subsystems here if needed, e.g.,
         // Intake.initialize(hardwareMap);
 
@@ -37,6 +39,7 @@ public class FieldEvent {
     }
 
     public static void pauseTime(double t){
+        Timer timer = new Timer();
         timer.resetTimer();
         while(timer.getElapsedTimeSeconds() < t){
         }
@@ -45,6 +48,7 @@ public class FieldEvent {
     public static boolean perform(Event event) {
         switch (event) {
             case SHOOT3:
+<<<<<<< HEAD
 
                 setFlywheels(1);//turn full speed
                 pauseTime(3);
@@ -67,6 +71,34 @@ public class FieldEvent {
 
                 //turn off flys
                 setFlywheels(0.0);
+=======
+                light.setPosition(RGB.yellow);
+                leftFlywheel.setPower(1);
+                rightFlywheel.setPower(1);
+                pauseTime(5);
+                leftFlap.setPosition(0.25);
+                rightFlap.setPosition(0.75);
+                pauseTime(.5);
+                leftFlap.setPosition(0);
+                rightFlap.setPosition(1);
+                pauseTime(5);
+                leftFlap.setPosition(0.25);
+                rightFlap.setPosition(0.75);
+                pauseTime(.5);
+                leftFlap.setPosition(0);
+                rightFlap.setPosition(1);
+                pauseTime(5);
+                leftFlap.setPosition(0.25);
+                rightFlap.setPosition(0.75);
+                pauseTime(.5);
+                leftFlap.setPosition(0);
+                rightFlap.setPosition(1);
+                pauseTime(5);
+
+                // Logic to shoot a scoring element
+                // Example:
+                // Shooter.shoot();
+>>>>>>> 0a748fe4c814677816050d5978d0a501651063af
                 return true;
             case CYCLE:
                 // Logic to cycle a scoring element
@@ -102,6 +134,7 @@ public class FieldEvent {
 
                 return true;
             case NULL:
+                light.setPosition(RGB.violet);
             default:
                 // Do nothing
                 return true;

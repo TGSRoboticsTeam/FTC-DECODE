@@ -39,6 +39,7 @@ public class UnEventfulAuto extends OpMode {
 
     @Override
     public void init() {
+
         // Initialize the follower and field paths
         follower = Constants.createFollower(hardwareMap);
         FieldPaths.initializePaths(follower);
@@ -49,6 +50,7 @@ public class UnEventfulAuto extends OpMode {
         light.setPosition(0.5);
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
+        light = hardwareMap.get(Servo.class, "light");
         leftFrontDrive = hardwareMap.get(DcMotor.class, "left_front_drive");
         leftBackDrive = hardwareMap.get(DcMotor.class, "left_back_drive");
         rightFrontDrive = hardwareMap.get(DcMotor.class, "right_front_drive");
@@ -107,10 +109,83 @@ public class UnEventfulAuto extends OpMode {
     }
     @Override
     public void start() {
+<<<<<<< HEAD
         light.setPosition(0.3);
+=======
+        double x = 0.277;
+        while (x < 1) {
+            light.setPosition(x);
+            pauseTime(.5);
+            x = x + .005;
+        }
+        light.setPosition(.277);
+        pauseTime(1);
+        light.setPosition(.291);
+        pauseTime(1);
+        light.setPosition(.305);
+        pauseTime(1);
+        light.setPosition(.329);
+        pauseTime(1);
+        light.setPosition(.345);
+        pauseTime(1);
+        light.setPosition(.363);
+        pauseTime(1);
+        light.setPosition(.378);
+        pauseTime(1);
+        light.setPosition(.389);
+        pauseTime(1);
+        light.setPosition(.401);
+        pauseTime(1);
+        light.setPosition(.458);
+        pauseTime(1);
+        light.setPosition(.494);
+        pauseTime(1);
+        light.setPosition(.515);
+        pauseTime(1);
+        light.setPosition(.558);
+        pauseTime(1);
+        light.setPosition(.592);
+        pauseTime(1);
+        light.setPosition(.602);
+        pauseTime(1);
+        light.setPosition(.639);
+        pauseTime(1);
+        light.setPosition(.678);
+        pauseTime(1);
+        light.setPosition(.692);
+        pauseTime(1);
+        light.setPosition(.713);
+        pauseTime(1);
+        light.setPosition(.736);
+        pauseTime(1);
+        light.setPosition(.765);
+        pauseTime(1);
+        light.setPosition(.792);
+        pauseTime(1);
+        light.setPosition(.829);
+        pauseTime(1);
+        light.setPosition(.854);
+        pauseTime(1);
+        light.setPosition(.879);
+        pauseTime(1);
+        light.setPosition(.9);
+        pauseTime(1);
+        light.setPosition(.930);
+        pauseTime(1);
+        light.setPosition(.951);
+        pauseTime(1);
+        light.setPosition(.978);
+        pauseTime(1);
+        light.setPosition(.999);
+        pauseTime(7);
+
+
+        light.setPosition(.432);
+>>>>>>> 0a748fe4c814677816050d5978d0a501651063af
         leftFlywheel.setPower(1);
         rightFlywheel.setPower(1);
         pauseTime(5);
+        light.setPosition(.789);
         leftFlap.setPosition(0.25);
         rightFlap.setPosition(0.75);
         pauseTime(1);
