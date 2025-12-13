@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  * Encapsulates the complete shooter autonomous routine.
  * Requires the active LinearOpMode to access sleep() and opModeIsActive().
  */
-public class DiamondbackAutoMechanism {
+public class Shoot {
 
     // --- Hardware Declarations ---
     private DcMotor leftFly, rightFly, intake;
@@ -24,7 +24,7 @@ public class DiamondbackAutoMechanism {
     private final LinearOpMode opMode;
 
     // --- Constructor: Initializes Hardware and Stores OpMode Reference ---
-    public DiamondbackAutoMechanism(LinearOpMode activeOpMode, HardwareMap hwMap) {
+    public Shoot(LinearOpMode activeOpMode, HardwareMap hwMap) {
         // Store the reference to the running OpMode
         this.opMode = activeOpMode;
 
