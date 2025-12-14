@@ -9,7 +9,11 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
+import java.math.MathContext;
 
 
 @TeleOp(name = "DiamondbackDriveFieldCentric_FINAL_V2", group = "Swerve")
@@ -20,6 +24,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu;
+    private VoltageSensor voltageSensor;
     private DcMotor leftFly, rightFly, intake;
     private Servo trigger;
     private Servo adjuster;
@@ -43,7 +48,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     final double ADJUSTER_DEADBAND = 0.05;
 
     // --- 5. SPEED CONTROL CONSTANTS ---
-    final double MAX_SPEED_GLOBAL = 0.8;
+    final double MAX_SPEED_GLOBAL = 1;
     final double MAX_SPEED_SLOW_MODE = 0.2;
     final double TRIGGER_THRESHOLD = 0.5;
     final double FULL_FLYWHEEL_POWER = 1.0;
@@ -72,6 +77,12 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
     final double LIGHT_FULL_POWER_POSITION = 0.5;
     // Assuming 3.88 -> 0.388 (Partial Power)
     final double LIGHT_PARTIAL_POSITION = 0.35;
+
+    // Power feathering
+    final double VOLTAGE_MINIMUM = 12.5;
+    final double VOLTAGE_MAXIMUM = 13.6;
+    final double FLYWHEEL_MINIMUM = 8.5;
+    final double FLYWHEEL_MAXIMUM = 1.0;
 
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -113,11 +124,11 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
 
 
             // --- Toggle Logic for Calibration Mode (Gamepad 1 R3) ---
-          //  boolean rightStickButtonCurrentlyPressed = gamepad1.right_stick_button;
-           // if (rightStickButtonCurrentlyPressed && !rightStickButtonPreviouslyPressed) {
-           //     isCalibrationModeActive = !isCalibrationModeActive;
-         //   }
-         //   rightStickButtonPreviouslyPressed = rightStickButtonCurrentlyPressed;
+            //  boolean rightStickButtonCurrentlyPressed = gamepad1.right_stick_button;
+            // if (rightStickButtonCurrentlyPressed && !rightStickButtonPreviouslyPressed) {
+            //     isCalibrationModeActive = !isCalibrationModeActive;
+            //   }
+            //   rightStickButtonPreviouslyPressed = rightStickButtonCurrentlyPressed;
 
             // Speed Limiter Logic (Gamepad 1 Right Bumper)
             double speedMultiplier = MAX_SPEED_GLOBAL;
@@ -134,7 +145,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             }
             yButtonPreviouslyPressed = yButtonCurrentlyPressed;
 
-            // Get current heading from IMU (in Radians)
+            // Get current heading from IMU (in Radians)`
             double robotYaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
             // --- CALIBRATION MODE CHECK ---
@@ -180,9 +191,11 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
                 turretTilt = MIN_TURRET_TILT;
             } else if (turretTilt > MAX_TURRET_TILT) {
                 turretTilt = MAX_TURRET_TILT;
+            } else if (gamepad1.dpad_right) {
+                turretTilt = 0.441;
             }
-
             adjuster.setPosition(turretTilt);
+
             // --- END TURRET TILT CONTROL ---
 
 
@@ -256,11 +269,35 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
                 }
             } else {
                 currentFlywheelPower = 0.0;
+            }//*/
+
+            /*double voltageMult = FULL_FLYWHEEL_POWER;
+            double lightPosition = LIGHT_PARTIAL_POSITION;
+            if (isLowPowerMode) {
+                voltageMult = SLOW_FLYWHEEL_POWER;
+                lightPosition = LIGHT_PARTIAL_POSITION ;
+            } else {
+                voltageMult = FULL_FLYWHEEL_POWER;
+                lightPosition = LIGHT_FULL_POWER_POSITION;
             }
+
+
+            if (isFlywheelOn) {
+                double robotVoltage = voltageSensor.getVoltage();
+                double featheredPower = FLYWHEEL_MINIMUM + (robotVoltage - VOLTAGE_MINIMUM) * (FLYWHEEL_MAXIMUM - FLYWHEEL_MINIMUM) / (VOLTAGE_MAXIMUM - VOLTAGE_MINIMUM);
+                currentFlywheelPower = Math.max(FLYWHEEL_MINIMUM, Math.min(featheredPower, FLYWHEEL_MAXIMUM)) * voltageMult;
+
+
+            } else {
+                currentFlywheelPower = 0.0;
+                lightPosition = LIGHT_DEFAULT_POSITION;
+            }*/
 
             // 3. Apply Flywheel Power
             leftFly.setPower(currentFlywheelPower);
             rightFly.setPower(currentFlywheelPower);
+
+          //  light.setPosition(lightPosition);
 
             // 4. Intake Toggle (Right Trigger)
             boolean rightTriggerCurrentlyPressed = gamepad1.right_trigger > TRIGGER_THRESHOLD;
@@ -282,7 +319,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
             } else {
                 // If flywheel is OFF (0.0 power), use the default position (0.28)
                 light.setPosition(LIGHT_DEFAULT_POSITION);
-            }
+            }//*/
 
 
             // --- TELEMETRY ---
@@ -313,6 +350,7 @@ public class DiamondbackDriveFieldCentric extends LinearOpMode {
         frontRightEncoder = hardwareMap.get(AnalogInput.class, "frontRightEncoder");
         backLeftEncoder   = hardwareMap.get(AnalogInput.class, "backLeftEncoder");
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
+        voltageSensor = hardwareMap.voltageSensor.iterator().next();
         imu = hardwareMap.get(IMU.class, "imu");
 
         // --- Mechanism Hardware ---

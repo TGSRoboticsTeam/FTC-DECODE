@@ -16,8 +16,8 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 // import com.pedropathing.follower.Follower;
 // import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
 
-@Autonomous(name = "redClose", group = "Swerve_Auto")
-public class SwerveAutoRoutine extends LinearOpMode {
+@Autonomous(name = "BlueSwerveAuto", group = "Swerve_Auto")
+public class BlueSwerveAuto extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS (Copied from TeleOp) ---
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -92,8 +92,7 @@ public class SwerveAutoRoutine extends LinearOpMode {
         timer2.resetTimer();
         while(timer2.getElapsedTimeSeconds() < 15){
         }
-        layup();
-
+        blueLayup();
 
         // Example: Run the threePointer routine
         // telemetry.addData("Status", "Running Three Pointer Routine...");
@@ -109,7 +108,8 @@ public class SwerveAutoRoutine extends LinearOpMode {
      * Autonomous function one: Layup Shot
      * Moves back for 2 seconds (or ~3 feet), shoots 3 balls, then moves right for 2 feet.
      */
-    public void layup() {
+
+    public void blueLayup() {
         // --- 1. Move Back for 2 Seconds (Target: 3 feet / 36 inches) ---
         // 36 inches / 25 in/s = 1.44 seconds. Using the requested 2 seconds for slower/more powerful movement.
         moveSwerveTime(0, -AUTO_MOVE_POWER, 0, 1000); // fieldY is negative for moving back
@@ -122,26 +122,7 @@ public class SwerveAutoRoutine extends LinearOpMode {
 
         // --- 3. Move Right for 2 Feet (Target: 24 inches) ---
         // 24 inches / 25 in/s = 0.96 seconds. Use 1000ms (1 second) for simplicity.
-        moveSwerveTime(AUTO_MOVE_POWER, 0, 0, 1250); // fieldX is positive for moving right
-
-        // Stop movement
-        moveSwerve(0, 0, 0, 0);
-    }
-
-    public void blueLayup() {
-        // --- 1. Move Back for 2 Seconds (Target: 3 feet / 36 inches) ---
-        // 36 inches / 25 in/s = 1.44 seconds. Using the requested 2 seconds for slower/more powerful movement.
-        moveSwerveTime(0, -AUTO_MOVE_POWER, 0, 2000); // fieldY is negative for moving back
-
-        // Stop movement
-        moveSwerve(0, 0, 0, 0);
-
-        // --- 2. Shoot 3 Balls ---
-        shootBalls(3);
-
-        // --- 3. Move Right for 2 Feet (Target: 24 inches) ---
-        // 24 inches / 25 in/s = 0.96 seconds. Use 1000ms (1 second) for simplicity.
-        moveSwerveTime(-AUTO_MOVE_POWER, 0, 0, 1500); // fieldX is positive for moving right
+        moveSwerveTime(-AUTO_MOVE_POWER, 0, 0, 1250); // fieldX is positive for moving right
 
         // Stop movement
         moveSwerve(0, 0, 0, 0);

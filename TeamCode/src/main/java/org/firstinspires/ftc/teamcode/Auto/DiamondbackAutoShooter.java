@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode.Autonomous;
 
+import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -10,7 +12,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 
 // IMPORTANT: This op mode is based on the logic from your TeleOp but removes the drive functionality
 // since only the mechanism control is required.
-
+@Disabled
 @Autonomous(name = "Diamondback Auto Shooter", group = "Autonomous")
 public class DiamondbackAutoShooter extends LinearOpMode {
 
@@ -56,6 +58,11 @@ public class DiamondbackAutoShooter extends LinearOpMode {
         // --- AUTONOMOUS SEQUENCE START ---
 
         if (opModeIsActive()) {
+
+            Timer timer2 = new Timer();
+            timer2.resetTimer();
+            while(timer2.getElapsedTimeSeconds() < 15){
+            }
 
             // 1. TURN ON FLYWHEEL AND INTAKE
             telemetry.addData("Status", "1. Starting Flywheels and Intake.");

@@ -1,8 +1,8 @@
 package org.firstinspires.ftc.teamcode.Auto;
 
 
-import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -15,9 +15,9 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 // Imports for Pedro Pathing are commented out as the functions use direct Swerve control
 // import com.pedropathing.follower.Follower;
 // import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
-
-@Autonomous(name = "redClose", group = "Swerve_Auto")
-public class SwerveAutoRoutine extends LinearOpMode {
+@Disabled
+@Autonomous(name = "betterRed", group = "Swerve_Auto")
+public class BetterRed extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS (Copied from TeleOp) ---
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -88,12 +88,10 @@ public class SwerveAutoRoutine extends LinearOpMode {
         // Example: Run the layup routine
         telemetry.addData("Status", "Running Layup Routine...");
         telemetry.update();
-        Timer timer2 = new Timer();
-        timer2.resetTimer();
-        while(timer2.getElapsedTimeSeconds() < 15){
-        }
         layup();
-
+        moveSwerveTime(0, 0, .5, 667); //face the side
+        moveSwerveTime(0, 0, 0, 0);
+        moveSwerveTime(0,.6,0,1200); // drive forward
 
         // Example: Run the threePointer routine
         // telemetry.addData("Status", "Running Three Pointer Routine...");
@@ -237,10 +235,10 @@ public class SwerveAutoRoutine extends LinearOpMode {
     public void shootBalls(int count) {
 
         intake.setPower(1);
-        adjuster.setPosition(0.441);
+
         // 1. Turn on the flywheel to full power
-        leftFly.setPower(0.75*FULL_FLYWHEEL_POWER);
-        rightFly.setPower(0.75*FULL_FLYWHEEL_POWER);
+        leftFly.setPower(FULL_FLYWHEEL_POWER);
+        rightFly.setPower(FULL_FLYWHEEL_POWER);
 
 
 
