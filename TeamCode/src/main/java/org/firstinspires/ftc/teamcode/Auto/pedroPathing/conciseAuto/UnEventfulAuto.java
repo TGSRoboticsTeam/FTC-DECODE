@@ -110,8 +110,12 @@ public class UnEventfulAuto extends OpMode {
     }
     @Override
     public void start() {
+<<<<<<< HEAD
 
         light.setPosition(0.3);
+=======
+        pauseTime(15); // Wait 15 seconds
+>>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
 
         double x = 0.277;
         while (x < 1) {

@@ -1,13 +1,8 @@
 package org.firstinspires.ftc.teamcode.Auto;
 
 
-<<<<<<< HEAD
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
-=======
-import com.pedropathing.util.Timer;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -20,14 +15,9 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 // Imports for Pedro Pathing are commented out as the functions use direct Swerve control
 // import com.pedropathing.follower.Follower;
 // import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
-
-<<<<<<< HEAD
-@Autonomous(name = "Swerve_Autonomous_Routine", group = "Swerve_Auto")
-
-=======
-@Autonomous(name = "redClose", group = "Swerve_Auto")
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
-public class SwerveAutoRoutine extends LinearOpMode {
+@Disabled
+@Autonomous(name = "FarAuto", group = "Swerve_Auto")
+public class FarAuto extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS (Copied from TeleOp) ---
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -96,24 +86,14 @@ public class SwerveAutoRoutine extends LinearOpMode {
         // --- AUTONOMOUS SEQUENCE ---
 
         // Example: Run the layup routine
-        telemetry.addData("Status", "Running Layup Routine...");
+        //telemetry.addData("Status", "Running Layup Routine...");
+        //telemetry.update();
+        //layup();
+
+        /// Example: Run the threePointer routine
+        telemetry.addData("Status", "Running Three Pointer Routine...");
         telemetry.update();
-<<<<<<< HEAD
-        layup();
-
-=======
-        Timer timer2 = new Timer();
-        timer2.resetTimer();
-        while(timer2.getElapsedTimeSeconds() < 15){
-        }
-        layup();
-
-
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
-        // Example: Run the threePointer routine
-        // telemetry.addData("Status", "Running Three Pointer Routine...");
-        // telemetry.update();
-        // threePointer();
+        threePointer();
 
         telemetry.addData("Status", "Autonomous Routine Complete.");
         telemetry.update();
@@ -127,28 +107,6 @@ public class SwerveAutoRoutine extends LinearOpMode {
     public void layup() {
         // --- 1. Move Back for 2 Seconds (Target: 3 feet / 36 inches) ---
         // 36 inches / 25 in/s = 1.44 seconds. Using the requested 2 seconds for slower/more powerful movement.
-<<<<<<< HEAD
-=======
-        moveSwerveTime(0, -AUTO_MOVE_POWER, 0, 1000); // fieldY is negative for moving back
-
-        // Stop movement
-        moveSwerve(0, 0, 0, 0);
-
-        // --- 2. Shoot 3 Balls ---
-        shootBalls(3);
-
-        // --- 3. Move Right for 2 Feet (Target: 24 inches) ---
-        // 24 inches / 25 in/s = 0.96 seconds. Use 1000ms (1 second) for simplicity.
-        moveSwerveTime(AUTO_MOVE_POWER, 0, 0, 1250); // fieldX is positive for moving right
-
-        // Stop movement
-        moveSwerve(0, 0, 0, 0);
-    }
-
-    public void blueLayup() {
-        // --- 1. Move Back for 2 Seconds (Target: 3 feet / 36 inches) ---
-        // 36 inches / 25 in/s = 1.44 seconds. Using the requested 2 seconds for slower/more powerful movement.
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
         moveSwerveTime(0, -AUTO_MOVE_POWER, 0, 2000); // fieldY is negative for moving back
 
         // Stop movement
@@ -159,18 +117,10 @@ public class SwerveAutoRoutine extends LinearOpMode {
 
         // --- 3. Move Right for 2 Feet (Target: 24 inches) ---
         // 24 inches / 25 in/s = 0.96 seconds. Use 1000ms (1 second) for simplicity.
-<<<<<<< HEAD
         moveSwerveTime(AUTO_MOVE_POWER, 0, 0, 1000); // fieldX is positive for moving right
 
         // Stop movement
         moveSwerve(0, 0, 0, 0);
-=======
-        moveSwerveTime(-AUTO_MOVE_POWER, 0, 0, 1500); // fieldX is positive for moving right
-
-        // Stop movement
-        moveSwerve(0, 0, 0, 0);
-
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
     }
 
     /**
@@ -183,7 +133,7 @@ public class SwerveAutoRoutine extends LinearOpMode {
 
         // --- 2. Move Up by 2 Feet (Target: 24 inches) ---
         // 24 inches / 25 in/s = 0.96 seconds. Use 1000ms (1 second) for simplicity.
-        moveSwerveTime(0, AUTO_MOVE_POWER, 0, 1000); // fieldY is positive for moving up
+        moveSwerveTime(0, AUTO_MOVE_POWER, 0, 1700); // fieldY is positive for moving up
 
         // Stop movement
         moveSwerve(0, 0, 0, 0);
@@ -260,38 +210,26 @@ public class SwerveAutoRoutine extends LinearOpMode {
      * @param count The number of balls to shoot.
      */
     public void shootBalls(int count) {
-<<<<<<< HEAD
-        // 1. Turn on the flywheel to full power
-        leftFly.setPower(FULL_FLYWHEEL_POWER);
-        rightFly.setPower(FULL_FLYWHEEL_POWER);
-=======
 
         intake.setPower(1);
-        adjuster.setPosition(0.441);
+        adjuster.setPosition(0.956);
         // 1. Turn on the flywheel to full power
-        leftFly.setPower(0.75*FULL_FLYWHEEL_POWER);
-        rightFly.setPower(0.75*FULL_FLYWHEEL_POWER);
+        leftFly.setPower(0.95*FULL_FLYWHEEL_POWER);
+        rightFly.setPower(0.95*FULL_FLYWHEEL_POWER);
 
 
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
 
         // Wait for the flywheel to spin up (DWELL time)
         sleep(1000); // 1.0 second dwell time (tune this value)
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
         // 2. Fire the balls
         for (int i = 0; i < count; i++) {
             if (!opModeIsActive()) break;
 
-<<<<<<< HEAD
-=======
 
 
 
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
             telemetry.addData("Shooting", "Ball %d of %d", i + 1, count);
             telemetry.update();
 
@@ -302,25 +240,18 @@ public class SwerveAutoRoutine extends LinearOpMode {
             // Return the trigger servo to the down position
             trigger.setPosition(SWEEP_DOWN_POSITION);
             sleep(SWEEP_DELAY_MS);
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
         }
 
         // 3. Turn off the flywheel
         leftFly.setPower(0);
         rightFly.setPower(0);
-<<<<<<< HEAD
-=======
         intake.setPower(0);
->>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
 
         telemetry.addData("Shooting", "Complete.");
         telemetry.update();
     }
-
     // =========================================================================
     // --- HARDWARE & UTILITY FUNCTIONS (Copied from TeleOp) ---
     // =========================================================================
