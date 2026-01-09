@@ -108,6 +108,8 @@ public class UnEventfulAuto extends OpMode {
     }
     @Override
     public void start() {
+        pauseTime(15); // Wait 15 seconds
+
         double x = 0.277;
         while (x < 1) {
             light.setPosition(x);
