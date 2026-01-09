@@ -110,9 +110,9 @@ public class UnEventfulAuto extends OpMode {
     }
     @Override
     public void start() {
-<<<<<<< HEAD
+
         light.setPosition(0.3);
-=======
+
         double x = 0.277;
         while (x < 1) {
             light.setPosition(x);
@@ -182,7 +182,6 @@ public class UnEventfulAuto extends OpMode {
 
 
         light.setPosition(.432);
->>>>>>> 0a748fe4c814677816050d5978d0a501651063af
         leftFlywheel.setPower(1);
         rightFlywheel.setPower(1);
         pauseTime(5);

@@ -107,19 +107,14 @@ public class RedBackupAuto extends OpMode {
     }
     @Override
     public void start() {
-<<<<<<< HEAD
-=======
 
->>>>>>> 0a748fe4c814677816050d5978d0a501651063af
 
         pathIndex = 0;
         // Start the first path immediately
         if (pathIndex < pathSequence.length) {
-<<<<<<< HEAD
+
              follower.followPath(pathSequence[pathIndex].path);
-=======
             follower.followPath(pathSequence[pathIndex].path);
->>>>>>> 0a748fe4c814677816050d5978d0a501651063af
         }
     }
 

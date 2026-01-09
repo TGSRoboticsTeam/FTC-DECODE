@@ -48,8 +48,6 @@ public class FieldEvent {
     public static boolean perform(Event event) {
         switch (event) {
             case SHOOT3:
-<<<<<<< HEAD
-
                 setFlywheels(1);//turn full speed
                 pauseTime(3);
 
@@ -71,7 +69,6 @@ public class FieldEvent {
 
                 //turn off flys
                 setFlywheels(0.0);
-=======
                 light.setPosition(RGB.yellow);
                 leftFlywheel.setPower(1);
                 rightFlywheel.setPower(1);
@@ -98,7 +95,6 @@ public class FieldEvent {
                 // Logic to shoot a scoring element
                 // Example:
                 // Shooter.shoot();
->>>>>>> 0a748fe4c814677816050d5978d0a501651063af
                 return true;
             case CYCLE:
                 // Logic to cycle a scoring element
