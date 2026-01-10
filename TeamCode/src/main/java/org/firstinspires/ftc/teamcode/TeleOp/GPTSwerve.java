@@ -86,7 +86,7 @@ public class GPTSwerve extends LinearOpMode {
 
     // Flywheel power
     final double FLYWHEEL_DEFAULT_POWER = 0.75;
-    final double FLYWHEEL_POWER_STEP = 0.01;
+    final double FLYWHEEL_POWER_STEP = 0.0025;
 
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -184,8 +184,8 @@ public class GPTSwerve extends LinearOpMode {
             adjuster.setPosition(turretTilt);
 
 
-            boolean flyPowerDownDpad = gamepad1.dpad_up;
-            boolean flyPowerUpDpad = gamepad1.dpad_down;
+            boolean flyPowerUpDpad = gamepad1.dpad_up;
+            boolean flyPowerDownDpad = gamepad1.dpad_down;
 
             if (flyPowerUpDpad) {
                 flyPower += FLYWHEEL_POWER_STEP;
@@ -193,13 +193,19 @@ public class GPTSwerve extends LinearOpMode {
                 flyPower -= FLYWHEEL_POWER_STEP;
             }
 
-            boolean resetFlywheelPower = gamepad1.a;
+            if (flyPower > 1.0) {
+                flyPower = 1.0;
+            }
+
+            boolean resetFlywheelPower = gamepad1.b;
             if (resetFlywheelPower) {
                 flyPower = FLYWHEEL_DEFAULT_POWER;
             }
 
-            leftFly.setPower(flyPower);
-            rightFly.setPower(flyPower);
+            if (isFlywheelOn) {
+                leftFly.setPower(flyPower);
+                rightFly.setPower(flyPower);
+            }
 
             /*
             boolean tiltUpDpad = gamepad1.dpad_up;
@@ -322,8 +328,8 @@ public class GPTSwerve extends LinearOpMode {
             }*/
 
             // 3. Apply Flywheel Power
-            leftFly.setPower(currentFlywheelPower);
-            rightFly.setPower(currentFlywheelPower);
+            //leftFly.setPower(currentFlywheelPower);
+            //rightFly.setPower(currentFlywheelPower);
 
             //  light.setPosition(lightPosition);
 
@@ -358,6 +364,7 @@ public class GPTSwerve extends LinearOpMode {
             telemetry.addData("Flywheel Power", "%.2f", currentFlywheelPower);
             telemetry.addData("Power Mode", isLowPowerMode ? "LOW (50%)" : "FULL (100%)");
             telemetry.addData("Light Servo Pos", "%.3f", light.getPosition());
+            telemetry.addData("Flywheel Power", "%.3f", flyPower);
             telemetry.update();
         }
     }
