@@ -90,6 +90,10 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     private double lightSweepPosition = LIGHT_MIN_POS;
     private boolean isLightSweepingUp = true;
 
+    // Wheel 'planting'
+    final int FRAMES_TO_PLANT_WHEELS = 5;
+    private int framesSinceLastMoved = 0;
+
     // Feather shooting
     final double VOLTAGE_MINIMUM = 12.5;
     final double VOLTAGE_MAXIMIM = 13.6;
@@ -200,11 +204,9 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
                 }
             }
             light.setPosition(lightSweepPosition);
-            // --- END LIGHT SERVO SWEEP ---
 
 
-            // --- DRIVE INPUTS (ROBOT-CENTRIC, Gamepad 1) ---
-
+            // ------ DRIVE INPUTS (ROBOT-CENTRIC) ------ //
             // Joystick inputs are the final robot-centric inputs
             double robotY = -gamepad1.left_stick_y * speedMultiplier; // Forward/Backward
             double robotX = gamepad1.left_stick_x * speedMultiplier;  // Strafe Left/Right
@@ -237,14 +239,16 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
                 targetAngleFR = Math.atan2(B, C);
                 targetAngleBL = Math.atan2(A, D);
                 targetAngleBR = Math.atan2(A, C);
+                framesSinceLastMoved = 0;
             } else {
                 speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
+                framesSinceLastMoved += 1;
             }
 
             // Lock wheels override ('X' formation)
-            if (gamepad1.left_stick_button) {
-                targetAngleFL = Math.PI / 4; targetAngleFR = -Math.PI / 4;
-                targetAngleBL = -Math.PI / 4; targetAngleBR = Math.PI / 4;
+            if (gamepad1.left_stick_button || framesSinceLastMoved >= FRAMES_TO_PLANT_WHEELS) {
+                targetAngleFL = -Math.PI / 4; targetAngleFR = Math.PI / 4;
+                targetAngleBL = Math.PI / 4; targetAngleBR = -Math.PI / 4;
                 speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
             }
 
