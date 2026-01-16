@@ -122,8 +122,8 @@ public class FieldPaths {
 
        Colorado = buildLineChain(redDepot, redFourCorners, redDepot.getHeading(), redFourCorners.getHeading());
        NewMexico = buildLineChain(redFourCorners, Gert, redFourCorners.getHeading(), Gert.getHeading());
-       NewMexicoB = buildLineChain(Gert, GertB, Gert.getHeading(), GertB.getHeading());
-       Colorado2 = buildLineChain(GertB, redFourCorners, GertB.getHeading(), redFourCorners.getHeading());
+       NewMexicoB = buildLineChain(Gert, redFourCorners, Gert.getHeading(), redFourCorners.getHeading());
+       Colorado2 = buildLineChain(redFourCorners, redDepot, redFourCorners.getHeading(), redDepot.getHeading());
 
 
        Utah = buildLineChain(blueDepot, blueFourCorners, blueDepot.getHeading(), blueFourCorners.getHeading());

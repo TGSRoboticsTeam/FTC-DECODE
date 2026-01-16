@@ -21,7 +21,17 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
         public static final boolean REVERSE_LEFT_BACK = true;
         public static final boolean REVERSE_RIGHT_BACK = false;
 
-        // --- Pinpoint Localizer Offsets (in mm) ---
+        public static final double FRONT_LEFT_OFFSET  = 5.2417;
+        public static final double FRONT_RIGHT_OFFSET = 5.7881;
+        public static final double BACK_LEFT_OFFSET   = 2.4143;
+        public static final double BACK_RIGHT_OFFSET  = 4.8209;
+
+        // --- Steering PID Constants ---
+        public static final double STEER_KP = 0.6;
+        public static final double STEER_DEADBAND = 0.05;
+
+
+    // --- Pinpoint Localizer Offsets (in mm) ---
         // These define where the pods are relative to the robot's center.
         // Forward Pod: Measures X movement.
         public static final double FORWARD_POD_OFFSET_X = -84.0; // Distance forward/back from center (mm)

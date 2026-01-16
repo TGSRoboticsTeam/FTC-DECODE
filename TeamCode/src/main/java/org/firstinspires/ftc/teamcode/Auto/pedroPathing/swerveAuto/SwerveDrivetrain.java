@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 import com.pedropathing.Drivetrain;
 import com.pedropathing.math.Vector;
 import com.pedropathing.math.MathFunctions;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -14,6 +15,7 @@ public class SwerveDrivetrain extends Drivetrain {
 
     private DcMotor flDrive, frDrive, blDrive, brDrive;
     private CRServo flSteer, frSteer, blSteer, brSteer;
+    private AnalogInput flEnc, frEnc, blEnc, brEnc;
     private VoltageSensor voltageSensor;
 
     // Derived Geometry
@@ -21,7 +23,8 @@ public class SwerveDrivetrain extends Drivetrain {
 
     // Internal State
     private double xVel = 0, yVel = 0;
-    private double[] targetAngles = new double[4]; // Stores calculated steering angles
+    // Stores calculated steering angles: [FL, FR, BL, BR]
+    private double[] targetAngles = new double[4];
 
     public SwerveDrivetrain(HardwareMap hw) {
         // Initialize Hardware
@@ -34,6 +37,12 @@ public class SwerveDrivetrain extends Drivetrain {
         frSteer = hw.get(CRServo.class, "frontRightSteer");
         blSteer = hw.get(CRServo.class, "backLeftSteer");
         brSteer = hw.get(CRServo.class, "backRightSteer");
+
+        // Initialize Analog Encoders
+        flEnc = hw.get(AnalogInput.class, "frontLeftEncoder");
+        frEnc = hw.get(AnalogInput.class, "frontRightEncoder");
+        blEnc = hw.get(AnalogInput.class, "backLeftEncoder");
+        brEnc = hw.get(AnalogInput.class, "backRightEncoder");
 
         voltageSensor = hw.voltageSensor.iterator().next();
 
@@ -95,7 +104,7 @@ public class SwerveDrivetrain extends Drivetrain {
     }
 
     /**
-     * Executes the calculated drive powers.
+     * Executes the calculated drive powers and steers wheels.
      */
     @Override
     public void runDrive(double[] drivePowers) {
@@ -103,19 +112,54 @@ public class SwerveDrivetrain extends Drivetrain {
         double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
         multiplier *= maxPowerScaling;
 
-        // Set Drive Powers
-        flDrive.setPower(drivePowers[0] * multiplier);
-        frDrive.setPower(drivePowers[1] * multiplier);
-        blDrive.setPower(drivePowers[2] * multiplier);
-        brDrive.setPower(drivePowers[3] * multiplier);
+        // Apply control to each module
+        runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, drivePowers[0] * multiplier, targetAngles[0]);
+        runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, drivePowers[1] * multiplier, targetAngles[1]);
+        runModule(blDrive, blSteer, blEnc, BACK_LEFT_OFFSET, drivePowers[2] * multiplier, targetAngles[2]);
+        runModule(brDrive, brSteer, brEnc, BACK_RIGHT_OFFSET, drivePowers[3] * multiplier, targetAngles[3]);
+    }
 
-        // --- STEERING LOGIC ---
-        // CURRENT STATUS: ENCODERS OFFLINE -> FIXED MODE
-        // Once cables are fixed, implement PID here using targetAngles[]
-        flSteer.setPower(0);
-        frSteer.setPower(0);
-        blSteer.setPower(0);
-        brSteer.setPower(0);
+    /**
+     * PID Control Logic for a single Swerve Module (Copied/Adapted from TeleOp)
+     */
+    private void runModule(DcMotor driveMotor, CRServo steerServo, AnalogInput encoder, double offset, double speed, double targetAngle) {
+        // 1. Calculate Current Angle
+        double rawAngle = getRawAngle(encoder);
+        double currentAngle = wrapAngle(rawAngle - offset);
+
+        // 2. Calculate Error (Delta)
+        double delta = wrapAngle(targetAngle - currentAngle);
+
+        // 3. Optimization (Flip 180 if closer)
+        if (Math.abs(delta) > Math.PI / 2) {
+            delta = wrapAngle(delta + Math.PI);
+            speed *= -1;
+        }
+
+        // 4. Calculate Steering Power (P-Controller)
+        double servoPower = STEER_KP * delta;
+        servoPower *= -1; // Invert for physical gear direction
+
+        // Deadband
+        if (Math.abs(servoPower) < STEER_DEADBAND) servoPower = 0;
+
+        // Clamp
+        servoPower = Math.max(-1, Math.min(1, servoPower));
+
+        // 5. Apply
+        steerServo.setPower(servoPower);
+        driveMotor.setPower(speed);
+    }
+
+    private double getRawAngle(AnalogInput encoder) {
+        // Convert 0-3.3V to 0-2PI Radians
+        return encoder.getVoltage() / 3.3 * (2 * Math.PI);
+    }
+
+    private double wrapAngle(double angle) {
+        while (angle > Math.PI) angle -= 2 * Math.PI;
+        while (angle < -Math.PI) angle += 2 * Math.PI;
+        return angle;
     }
 
     @Override
@@ -123,6 +167,7 @@ public class SwerveDrivetrain extends Drivetrain {
 
     @Override
     public void breakFollowing() {
+        // Stop all motors and servos
         flDrive.setPower(0); frDrive.setPower(0);
         blDrive.setPower(0); brDrive.setPower(0);
         flSteer.setPower(0); frSteer.setPower(0);
@@ -137,7 +182,6 @@ public class SwerveDrivetrain extends Drivetrain {
         setZeroPowerBehavior(brakeMode ? DcMotor.ZeroPowerBehavior.BRAKE : DcMotor.ZeroPowerBehavior.FLOAT);
     }
 
-    // Velocity getters required by interface but unused in Holonomic pathing
     @Override public double xVelocity() { return xVel; }
     @Override public double yVelocity() { return yVel; }
     @Override public void setXVelocity(double x) { this.xVel = x; }
@@ -150,6 +194,20 @@ public class SwerveDrivetrain extends Drivetrain {
 
     @Override
     public String debugString() {
-        return "Swerve Drive: [Mode: FIXED (Encoders Offline)]";
+        // --- UPDATED DEBUG STRING FOR ANGLE DIAGNOSTICS ---
+        // Displays:
+        // 1. Raw Angle (from Servo Encoder)
+        // 2. Calculated Angle (Raw - Offset)
+        // 3. Target Angle (from Pedro math)
+        return String.format(
+                "FL: Raw:%.2f | Calc:%.2f | Tgt:%.2f\n" +
+                        "FR: Raw:%.2f | Calc:%.2f | Tgt:%.2f\n" +
+                        "BL: Raw:%.2f | Calc:%.2f | Tgt:%.2f\n" +
+                        "BR: Raw:%.2f | Calc:%.2f | Tgt:%.2f",
+                getRawAngle(flEnc), wrapAngle(getRawAngle(flEnc) - FRONT_LEFT_OFFSET), targetAngles[0],
+                getRawAngle(frEnc), wrapAngle(getRawAngle(frEnc) - FRONT_RIGHT_OFFSET), targetAngles[1],
+                getRawAngle(blEnc), wrapAngle(getRawAngle(blEnc) - BACK_LEFT_OFFSET), targetAngles[2],
+                getRawAngle(brEnc), wrapAngle(getRawAngle(brEnc) - BACK_RIGHT_OFFSET), targetAngles[3]
+        );
     }
 }
