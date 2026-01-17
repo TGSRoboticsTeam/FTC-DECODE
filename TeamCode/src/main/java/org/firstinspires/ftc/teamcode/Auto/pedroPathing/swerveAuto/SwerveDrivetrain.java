@@ -55,7 +55,7 @@ public class SwerveDrivetrain extends Drivetrain {
         setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         this.nominalVoltage = 12.0;
-        this.maxPowerScaling = 1.0;
+        this.maxPowerScaling = 0.3;
     }
 
     private void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior behavior) {
@@ -209,5 +209,8 @@ public class SwerveDrivetrain extends Drivetrain {
                 getRawAngle(blEnc), wrapAngle(getRawAngle(blEnc) - BACK_LEFT_OFFSET), targetAngles[2],
                 getRawAngle(brEnc), wrapAngle(getRawAngle(brEnc) - BACK_RIGHT_OFFSET), targetAngles[3]
         );
+    }
+
+    public void stopDriveMotorsOnly() {
     }
 }

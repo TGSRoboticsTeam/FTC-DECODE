@@ -21,12 +21,18 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
         public static final boolean REVERSE_LEFT_BACK = true;
         public static final boolean REVERSE_RIGHT_BACK = false;
 
-        public static final double FRONT_LEFT_OFFSET  = 5.2417;
-        public static final double FRONT_RIGHT_OFFSET = 5.7881;
-        public static final double BACK_LEFT_OFFSET   = 2.4143;
-        public static final double BACK_RIGHT_OFFSET  = 4.8209;
+        public static final double FRONT_LEFT_OFFSET  = 3.6709;
+        public static final double FRONT_RIGHT_OFFSET = 4.2173;
+        public static final double BACK_LEFT_OFFSET   = 0.8435;
+        public static final double BACK_RIGHT_OFFSET  = 3.2509;
 
-        // --- Steering PID Constants ---
+    //final double FRONT_LEFT_OFFSET  = 5.2417; // This value is in radians (0 to 2π)
+    //final double FRONT_RIGHT_OFFSET = 5.7881;
+    //final double BACK_LEFT_OFFSET   = 2.4143;
+    //final double BACK_RIGHT_OFFSET  = 4.8209;
+
+
+    // --- Steering PID Constants ---
         public static final double STEER_KP = 0.6;
         public static final double STEER_DEADBAND = 0.05;
 
