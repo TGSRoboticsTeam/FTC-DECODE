@@ -47,6 +47,8 @@ public class UnEventfulAuto extends OpMode {
         follower.setStartingPose(redDepot);
         leftFlywheel = hardwareMap.get(DcMotor.class, "left_fly");
         rightFlywheel = hardwareMap.get(DcMotor.class, "right_fly");
+        light = hardwareMap.get(Servo.class, "light");
+        light.setPosition(0.5);
         leftFlap = hardwareMap.get(Servo.class, "left_flap");
         rightFlap = hardwareMap.get(Servo.class, "right_flap");
         light = hardwareMap.get(Servo.class, "light");
@@ -108,7 +110,12 @@ public class UnEventfulAuto extends OpMode {
     }
     @Override
     public void start() {
+<<<<<<< HEAD
+
+        light.setPosition(0.3);
+=======
         pauseTime(15); // Wait 15 seconds
+>>>>>>> 7469baa346b9ae3d64f3899af5aa83c4367891c2
 
         double x = 0.277;
         while (x < 1) {
@@ -232,6 +239,8 @@ public class UnEventfulAuto extends OpMode {
 
     @Override
     public void loop() {
+        light.setPosition(0.7);
+
         /*
         follower.update();
 

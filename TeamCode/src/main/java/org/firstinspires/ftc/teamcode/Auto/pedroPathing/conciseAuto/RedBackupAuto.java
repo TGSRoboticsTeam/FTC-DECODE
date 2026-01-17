@@ -112,6 +112,8 @@ public class RedBackupAuto extends OpMode {
         pathIndex = 0;
         // Start the first path immediately
         if (pathIndex < pathSequence.length) {
+
+             follower.followPath(pathSequence[pathIndex].path);
             follower.followPath(pathSequence[pathIndex].path);
         }
     }
