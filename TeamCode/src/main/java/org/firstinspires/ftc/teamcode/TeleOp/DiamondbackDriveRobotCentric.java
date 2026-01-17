@@ -28,7 +28,6 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     private Servo trigger;
     private Servo adjuster;
     private Servo light;
-    private Servo turretRotation1, turretRotation2;
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -73,17 +72,14 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     final double MIN_TURRET_TILT = 0.01;
     final double MAX_TURRET_TILT = 0.99;
 
-    // Turret Rotation
-    final double MIN_TURRET_ROTATION = 0.0;
-    final double MAX_TURRET_ROTATION = 1.0;
-    final double TURRET_ROTATION_STEP = 0.01;
-
-    private double currentTurretRotation = (MIN_TURRET_ROTATION + MAX_TURRET_ROTATION)/2.0;
-
     // --- 8. LIGHT SWEEP PARAMETERS ---
     final double LIGHT_MIN_POS = 0.277;
     final double LIGHT_MAX_POS = 0.772;
     final double LIGHT_SWEEP_STEP = 0.001;
+
+    // Flywheel power
+    final double FLYWHEEL_DEFAULT_POWER = 0.75;
+    final double FLYWHEEL_POWER_STEP = 0.005;
 
     // --- 9. TOGGLE STATE VARIABLES ---
     private boolean isCalibrationModeActive = false;
@@ -93,6 +89,7 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     private boolean leftTriggerPreviouslyPressed = false;
     private boolean rightTriggerPreviouslyPressed = false;
     private boolean aButtonPreviouslyPressed = false;
+    private double flyPower = 0.75;
 
     // Light Sweep State Variables
     private double lightSweepPosition = LIGHT_MIN_POS;
@@ -174,8 +171,8 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
             }
 
             // 2. Gamepad 1 D-Pad (Snap Positions)
-            boolean tiltUpDpad = gamepad1.dpad_down;
-            boolean tiltDownDpad = gamepad1.dpad_up;
+            boolean tiltUpDpad = gamepad2.dpad_down;
+            boolean tiltDownDpad = gamepad2.dpad_up;
 
             // D-Pad UP snaps to MAX position
             if (tiltUpDpad) {
@@ -275,12 +272,30 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
             }
             leftTriggerPreviouslyPressed = leftTriggerCurrentlyPressed;
 
-            double robotVoltage = voltageSensor.getVoltage();
-            double featheredPower = FLYWHEEL_MINIMUM + (robotVoltage - VOLTAGE_MINIMUM) * (FLYWHEEL_MAXIMUM - FLYWHEEL_MINIMUM) / (VOLTAGE_MAXIMIM - VOLTAGE_MINIMUM);
-            featheredPower = Math.max(FLYWHEEL_MINIMUM, (Math.min(featheredPower, FLYWHEEL_MAXIMUM)));
+            boolean flyPowerUpDpad = gamepad2.dpad_right;
+            boolean flyPowerDownDpad = gamepad2.dpad_left;
 
-            leftFly.setPower(isFlywheelOn ? featheredPower : 0);
-            rightFly.setPower(isFlywheelOn ? featheredPower : 0);
+            if (flyPowerUpDpad) {
+                flyPower += FLYWHEEL_POWER_STEP;
+            } else if (flyPowerDownDpad) {
+                flyPower -= FLYWHEEL_POWER_STEP;
+            }
+
+            if (flyPower > 1.0) {
+                flyPower = 1.0;
+            } else if (flyPower < 0.0) {
+                flyPower = 0.0;
+            }
+
+            boolean resetFlywheelPower = gamepad2.b;
+            if (resetFlywheelPower) {
+                flyPower = FLYWHEEL_DEFAULT_POWER;
+            }
+
+            if (isFlywheelOn) {
+                leftFly.setPower(flyPower);
+                rightFly.setPower(flyPower);
+            }
 
             // Intake Toggle (Right Trigger)
             boolean rightTriggerCurrentlyPressed = gamepad1.right_trigger > TRIGGER_THRESHOLD;
@@ -293,6 +308,7 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
 
             // --- TELEMETRY (Simplified) ---
             telemetry.addData("Turret Tilt Position", "%.3f", turretTilt);
+            telemetry.addData("Flywheel Power", "%.3f", flyPower);
             telemetry.update();
         }
     }
@@ -322,8 +338,6 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         trigger = hardwareMap.get(Servo.class, "trigger");
         adjuster = hardwareMap.get(Servo.class, "adjuster");
-        turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1" );
-        turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2" );
         light = hardwareMap.get(Servo.class, "light");
 
         // CRITICAL: IMU INITIALIZATION IS STILL NEEDED FOR HUB TO START
