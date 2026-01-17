@@ -40,8 +40,7 @@ public class FieldPaths {
     public static PathChain redDepotShoot, redShootBarney, redBarneyShoot, redShootGreen, redGreenShoot, redShootPurple, redPurpleShoot;
     public static PathChain redShootCenter;
 
-    public static PathChain Utah, Arizona, Colorado,NewMexico, Push1R, Push2R, Push3R, NewMexico2, NewMexico3, RoadTrip1, RoadTrip2, RoadTrip3;
-            //NewMexicoB,Colorado2;
+    public static PathChain Utah, Arizona, Colorado,NewMexico,NewMexicoB,Colorado2;
 
 
 
@@ -122,26 +121,12 @@ public class FieldPaths {
         // NOTE: Add the remaining 32 tiles to/from CENTER here.*/
 
        Colorado = buildLineChain(redDepot, redFourCorners, redDepot.getHeading(), redFourCorners.getHeading());
-       NewMexico = buildLineChain(redFourCorners, P1R, redFourCorners.getHeading(), P1R.getHeading());
-       Push1R = buildLineChain(P1R, F1R, P1R.getHeading(), F1R.getHeading());
-       RoadTrip1 = buildLineChain(F1R, redFourCorners, F1R.getHeading(), redFourCorners.getHeading());
-       NewMexico2 = buildLineChain(redFourCorners, P2R, redFourCorners.getHeading(), P1R.getHeading());
-       Push2R = buildLineChain(P2R, F2R, P2R.getHeading(), F2R.getHeading());
-       RoadTrip2 = buildLineChain(F2R, redFourCorners, F2R.getHeading(), redFourCorners.getHeading());
-       NewMexico3 = buildLineChain(redFourCorners, P3R, redFourCorners.getHeading(), P3R.getHeading());
-       Push3R = buildLineChain(P3R, F3R, P3R.getHeading(), F3R.getHeading());
-       RoadTrip3 = buildLineChain(F3R, redFourCorners, F3R.getHeading(), redFourCorners.getHeading());
+       NewMexico = buildLineChain(redFourCorners, Gert, redFourCorners.getHeading(), Gert.getHeading());
+       NewMexicoB = buildLineChain(Gert, redFourCorners, Gert.getHeading(), redFourCorners.getHeading());
+       Colorado2 = buildLineChain(redFourCorners, redDepot, redFourCorners.getHeading(), redDepot.getHeading());
 
 
-
-
-        /*
-        NewMexicoB = buildLineChain(Gert, GertB, Gert.getHeading(), GertB.getHeading());
-        Colorado2 = buildLineChain(GertB, redFourCorners, GertB.getHeading(), redFourCorners.getHeading());
-       */
-
-
-        Utah = buildLineChain(blueDepot, blueFourCorners, blueDepot.getHeading(), blueFourCorners.getHeading());
+       Utah = buildLineChain(blueDepot, blueFourCorners, blueDepot.getHeading(), blueFourCorners.getHeading());
        Arizona = buildLineChain(blueFourCorners, Mule, blueFourCorners.getHeading(), Mule.getHeading());
     }
 

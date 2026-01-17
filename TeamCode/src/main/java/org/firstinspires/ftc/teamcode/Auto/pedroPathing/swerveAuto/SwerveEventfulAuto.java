@@ -3,8 +3,7 @@ package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 import com.pedropathing.follower.Follower;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.hardware.Servo; // Import Servo
-import org.firstinspires.ftc.vision.apriltag.AprilTagDetection; // Import detection (placeholder)
+import com.qualcomm.robotcore.hardware.Servo;
 
 import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.FieldPose.*;
 import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.FieldPaths.*;
@@ -16,9 +15,7 @@ public class SwerveEventfulAuto extends OpMode {
     private Follower follower;
     private int pathIndex = 0;
     private PathAndEvent[] pathSequence;
-
-    // --- New Hardware ---
-    private Servo light; // The servo controlling the light color
+    private Servo light;
 
     @Override
     public void init() {
@@ -27,22 +24,13 @@ public class SwerveEventfulAuto extends OpMode {
         follower.setStartingPose(redDepot);
         FieldEvent.initialize(hardwareMap);
 
-        // --- Initialize Light ---
-        // Make sure "light" matches your configuration name!
+        // Initialize Light
         light = hardwareMap.get(Servo.class, "light");
-        light.setPosition(RGB.off); // Start with light off
-
-        // Initialize Vision (Placeholder - Add your actual VisionPortal init here)
-        // initAprilTag();
+        light.setPosition(RGB.off);
 
         pathSequence = new PathAndEvent[]{
                 new PathAndEvent(Colorado, Event.SHOOT),
-                new PathAndEvent(NewMexico, Event.INTAKE_ON),
-                new PathAndEvent(NewMexicoB, Event.INTAKE_OFF),
-                new PathAndEvent(Colorado2, Event.SHOOT),
-
-
-
+                new PathAndEvent(NewMexico, Event.CALIBRATE)
         };
 
         telemetry.addData("Status", "Initialized");
@@ -60,48 +48,45 @@ public class SwerveEventfulAuto extends OpMode {
     public void loop() {
         follower.update();
 
-        // --- Light Logic ---
-        // Check for AprilTag visibility
-        boolean tagVisible = checkForAprilTag();
+        // --- Logic Fix ---
+        // Only run path logic if we have a valid index (0 to length-1)
+        if (pathIndex >= 0 && pathIndex < pathSequence.length) {
 
-        if (tagVisible) {
-            light.setPosition(RGB.green); // Tag seen -> Green
-        } else {
-            light.setPosition(RGB.blue);  // No tag -> Blue
-        }
+            // Check if the robot is done moving along the current path
+            if (!follower.isBusy()) {
 
-        // --- Path Logic ---
-        if (!follower.isBusy()) {
-            if (pathIndex < pathSequence.length) {
+                // Execute the event associated with this path step
                 boolean eventFinished = FieldEvent.perform(pathSequence[pathIndex].event);
+
+                // Only proceed if the event is totally finished
                 if (eventFinished) {
-                    pathIndex++;
+                    pathIndex++; // Advance to next step
+
+                    // Check if there is a next path to follow
                     if (pathIndex < pathSequence.length) {
                         follower.followPath(pathSequence[pathIndex].path);
                     } else {
+                        // Sequence Complete
                         pathIndex = -1;
                     }
                 }
             }
+        } else {
+            // Path sequence is complete or invalid.
+            // We can add "Holding" logic here if desired.
+            if (pathIndex == -1) {
+                telemetry.addData("Status", "Auto Sequence Complete");
+            }
         }
 
-        telemetry.addData("Light Color", tagVisible ? "Green" : "Blue");
+        telemetry.addData("Path Index", pathIndex);
+        telemetry.addData("Busy", follower.isBusy());
         telemetry.update();
     }
 
     @Override
     public void stop() {
         follower.breakFollowing();
-        light.setPosition(RGB.off); // Turn off light at end
-    }
-
-    // --- Helper Method for AprilTag ---
-    private boolean checkForAprilTag() {
-        // REPLACE THIS with your actual AprilTag detection logic!
-        // Example:
-        // List<AprilTagDetection> currentDetections = aprilTag.getDetections();
-        // return !currentDetections.isEmpty();
-
-        return false; // Default to false (Blue light) if no vision code
+        light.setPosition(RGB.off);
     }
 }
