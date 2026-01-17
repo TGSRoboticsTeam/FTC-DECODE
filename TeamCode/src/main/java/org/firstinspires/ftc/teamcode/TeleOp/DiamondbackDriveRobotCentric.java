@@ -28,6 +28,7 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     private Servo trigger;
     private Servo adjuster;
     private Servo light;
+    private Servo turretRotation1, turretRotation2;
 
     // --- 2. ROBOT GEOMETRY ---
     final double TRACK_WIDTH = 17.258;
@@ -71,6 +72,13 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     // Turret Tilt Limits (Min/Max positions for the servo)
     final double MIN_TURRET_TILT = 0.01;
     final double MAX_TURRET_TILT = 0.99;
+
+    // Turret Rotation
+    final double MIN_TURRET_ROTATION = 0.0;
+    final double MAX_TURRET_ROTATION = 1.0;
+    final double TURRET_ROTATION_STEP = 0.01;
+
+    private double currentTurretRotation = (MIN_TURRET_ROTATION + MAX_TURRET_ROTATION)/2.0;
 
     // --- 8. LIGHT SWEEP PARAMETERS ---
     final double LIGHT_MIN_POS = 0.277;
@@ -314,6 +322,8 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
         intake = hardwareMap.get(DcMotor.class, "intake");
         trigger = hardwareMap.get(Servo.class, "trigger");
         adjuster = hardwareMap.get(Servo.class, "adjuster");
+        turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1" );
+        turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2" );
         light = hardwareMap.get(Servo.class, "light");
 
         // CRITICAL: IMU INITIALIZATION IS STILL NEEDED FOR HUB TO START
