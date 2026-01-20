@@ -307,10 +307,6 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
             intake.setPower(isIntakeOn ? 1.0 : 0);
 
             // --- TELEMETRY (Simplified) ---
-            telemetry.addData("Front Right Encoder", "%.3f", frontRightEncoder.getVoltage());
-            telemetry.addData("Back Right Encoder", "%.3f", backRightEncoder.getVoltage());
-            telemetry.addData("Front Left Encoder", "%.3f", frontLeftEncoder.getVoltage());
-            telemetry.addData("Back Left Encoder", "%.3f", backLeftEncoder.getVoltage());
             telemetry.addData("Turret Tilt Position", "%.3f", turretTilt);
             telemetry.addData("Flywheel Power", "%.3f", flyPower);
             telemetry.update();
