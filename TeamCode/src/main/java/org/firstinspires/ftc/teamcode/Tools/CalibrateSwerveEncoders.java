@@ -29,6 +29,11 @@ public class CalibrateSwerveEncoders extends LinearOpMode {
         waitForStart();
 
         while (opModeIsActive()) {
+            frontLeftSteer.setPower(0);
+            frontRightSteer.setPower(0);
+            backLeftSteer.setPower(0);
+            backRightSteer.setPower(0);
+
             telemetry.addData("frontLeftEncoder", frontLeftEncoder.getVoltage());
             telemetry.addData("frontRightEncoder", frontRightEncoder.getVoltage());
             telemetry.addData("backLeftEncoder", backLeftEncoder.getVoltage());
