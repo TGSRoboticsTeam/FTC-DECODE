@@ -1,3 +1,6 @@
+
+//POSES ASSUME THAT THEY ALIGN WITH ROBOT CENTER. IF SOMETHING IS OFF, CHECK THE OFFSET.
+
 package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 // Change package path to match your actual file location
 
@@ -103,11 +106,35 @@ public class FieldPose {
     //public static final Pose redGreen = new Pose(getX(5) , getY(4) , Heading_E); // (12.0, 12.0, 0.0)
     //public static final Pose redBarney = new Pose(getX(4) , getY(3) , Heading_E); // (12.0, 12.0, 0.0)
     //public static final Pose redPurple = new Pose(getX(3) , getY(2) + 12, Heading_E); // (12.0, 12.0, 0.0)
-    public static final Pose redFourCorners = new Pose(getX(4) + 12, getY(4) + 12, Heading_NE);
-    public static final Pose blueFourCorners = new Pose(getX(2) + 12, getY(4) + 12, Heading_NW);
+    public static final Pose Gert = new Pose(getX(4) + 12, getY(4) + 12, Heading_NE);
+    public static final Pose GertB = new Pose(getX(2) + 12, getY(4) + 12, Heading_NW);
 
-    public static final Pose Gert = new Pose(getX(5) +2, getY(4), Heading_E);
-    public static final Pose GertB = new Pose(getX(6) , getY(4), Heading_E);
+    public static final Pose redFourCorners = new Pose(getX(4) + 12 + 8.25, getY(4) + 12 + 8.25, Heading_NE);
+    public static final Pose blueFourCorners = new Pose(getX(2) + 12 + 8.25, getY(4) + 12 + 8.25, Heading_NE);
+
+    public static final Pose P1R = new Pose(getX(5), getY(4), Heading_E);
+    public static final Pose P1B = new Pose(getX(2), getY(4), Heading_W);
+    public static final Pose P2R = new Pose(getX(5), getY(3), Heading_E);
+    public static final Pose P2B = new Pose(getX(2), getY(3), Heading_E);
+
+    public static final Pose P3R = new Pose(getX(5), getY(2), Heading_E);
+    public static final Pose P3B = new Pose(getX(2), getY(2), Heading_E);
+
+    public static final Pose F1R = new Pose(getX(6) + 4, getY(4), Heading_E);
+    public static final Pose F1B = new Pose(getX(1) - 4, getY(4), Heading_E);
+
+    public static final Pose F2R = new Pose(getX(6) + 4, getY(3), Heading_E);
+    public static final Pose F2B = new Pose(getX(1) - 4, getY(3), Heading_E);
+
+    public static final Pose F3R = new Pose(getX(6) + 4, getY(2), Heading_E);
+    public static final Pose F3B = new Pose(getX(1) - 4, getY(2), Heading_E);
+
+
+
+
+
+
+
 
     public static final Pose Mule = new Pose(getX(2) - 2, getY(4) + 12, Heading_W);
 
