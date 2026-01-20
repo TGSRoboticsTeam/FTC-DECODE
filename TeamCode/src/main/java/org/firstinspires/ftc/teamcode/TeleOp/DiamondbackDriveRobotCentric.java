@@ -35,10 +35,10 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
     final double R = Math.hypot(TRACK_WIDTH, WHEELBASE);
 
     // --- 3. CRITICAL: OFFSETS (Using your measured values) ---
-    final double FRONT_LEFT_OFFSET  = 5.2417;
-    final double FRONT_RIGHT_OFFSET = 5.7881;
-    final double BACK_LEFT_OFFSET   = 2.4143;
-    final double BACK_RIGHT_OFFSET  = 4.8209;
+    final double FRONT_LEFT_OFFSET  = 1.34;
+    final double FRONT_RIGHT_OFFSET = 3.161;
+    final double BACK_LEFT_OFFSET   = 1.589;
+    final double BACK_RIGHT_OFFSET  = 1.237;
 
     // --- 4. TUNING PARAMETERS ---
     final double STEER_KP = 0.6;
@@ -353,8 +353,8 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
         // --- Swerve Drive Motor Direction Fix ---
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
-        frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
-        backRightDrive.setDirection(DcMotor.Direction.FORWARD);
+        frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
         // --- Mechanism Motor Direction Fix (Controlled by toggles at the top) ---
         final boolean LEFT_FLY_REVERSE    = false;
@@ -422,11 +422,11 @@ public class DiamondbackDriveRobotCentric extends LinearOpMode {
         for (CRServo servo : steerServos) { servo.setPower(0); }
 
         //telemetry.addData("Mode", "**CALIBRATION - PID DISABLED**");
-       // telemetry.addData("FL Raw Angle", getRawAngle(frontLeftEncoder));
-       // telemetry.addData("FR Raw Angle", getRawAngle(frontRightEncoder));
-       // telemetry.addData("BL Raw Angle", getRawAngle(backLeftEncoder));
-      //  telemetry.addData("BR Raw Angle", getRawAngle(backRightEncoder));
-      //  telemetry.addData("Exit", "Press Right Stick Button (R3) to EXIT.");
+        // telemetry.addData("FL Raw Angle", getRawAngle(frontLeftEncoder));
+        // telemetry.addData("FR Raw Angle", getRawAngle(frontRightEncoder));
+        // telemetry.addData("BL Raw Angle", getRawAngle(backLeftEncoder));
+        //  telemetry.addData("BR Raw Angle", getRawAngle(backRightEncoder));
+        //  telemetry.addData("Exit", "Press Right Stick Button (R3) to EXIT.");
         telemetry.update();
     }
 }
