@@ -14,7 +14,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-//@Disabled
+@Disabled
 @TeleOp(name = "DiamondbackDriveRobotCentric", group = "Swerve")
 public class DiamondbackDriveRobotCentric extends LinearOpMode {
 
