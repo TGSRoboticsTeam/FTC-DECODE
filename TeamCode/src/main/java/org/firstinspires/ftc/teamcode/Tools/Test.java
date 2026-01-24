@@ -37,9 +37,22 @@ public class Test extends LinearOpMode {
             currentTurretRotation += turretRotate * TURRET_ROTATION_STEP;
             currentTurretRotation = Math.max(MIN_TURRET_ROTATION, Math.max(currentTurretRotation, MAX_TURRET_ROTATION));//just clamping
 
+<<<<<<< HEAD
+            if (gamepad1.a) {
+                currentTurretRotation = 0;
+            }
+            if (gamepad1.b) {
+                currentTurretRotation = 1.0;
+            }
+
             turretRotation1.setPosition(currentTurretRotation);
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
+=======
+            turretRotation1.setPosition(currentTurretRotation);
+            turretRotation2.setPosition(1.0 - currentTurretRotation);
+
+>>>>>>> 8895c0a2c3aea9f4120bc595fcd20ab8cf9886f9
             // --- TELEMETRY (Simplified) ---
             telemetry.addData("Turret Rotation:", "%.3f", currentTurretRotation);
             telemetry.update();
@@ -50,5 +63,8 @@ public class Test extends LinearOpMode {
     private void initializeHardware() {
         turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1" );
         turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2" );
+
+        turretRotation1.setDirection(Servo.Direction.FORWARD);
+        turretRotation2.setDirection(Servo.Direction.REVERSE);
     }
 }
