@@ -26,9 +26,71 @@ public class CalibrateSwerveEncoders extends LinearOpMode {
         backLeftEncoder   = hardwareMap.get(AnalogInput.class, "backLeftEncoder");
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
 
+        CRServo selectedModule = null;
+
         waitForStart();
 
         while (opModeIsActive()) {
+
+            // Selecting the module
+            if (gamepad1.a) {
+                selectedModule = frontLeftSteer;
+            }
+            if (gamepad1.b) {
+                selectedModule = frontRightSteer;
+            }
+            if (gamepad1.x) {
+                selectedModule = backLeftSteer;
+            }
+            if (gamepad1.y) {
+                selectedModule = backRightSteer;
+            }
+
+            // Setting the power
+            boolean dpadDown = gamepad1.dpad_down;
+            boolean dpadLeft = gamepad1.dpad_left;
+            boolean dpadRight = gamepad1.dpad_right;
+            boolean dpadUp = gamepad1.dpad_up;
+
+            double smallest = 0.005;
+            double sMedium = 0.01;
+            double lMedium = 0.1;
+            double largest = 0.3;
+
+            double power = 0.0;
+            if (dpadDown) {
+                power = smallest;
+            } else if (dpadLeft) {
+                power = sMedium;
+            } else if (dpadRight) {
+                power = lMedium;
+            } else if (dpadUp) {
+                power = largest;
+            }
+
+            frontLeftSteer.setPower(0);
+            frontRightSteer.setPower(0);
+            backLeftSteer.setPower(0);
+            backRightSteer.setPower(0);
+            if (selectedModule != null) {
+                selectedModule.setPower(power);
+            }
+
+            String selectedText = "None";
+            if (selectedModule == frontLeftSteer) {
+                selectedText = "frontLeftModule";
+            } else if (selectedModule == frontRightSteer) {
+                selectedText = "frontRightModule";
+            } else if (selectedModule == backLeftSteer) {
+                selectedText = "backLeftModule";
+            } else if (selectedModule == backRightSteer) {
+                selectedText = "backRightModule";
+            } else {
+                telemetry.addData("Please select a module (press A, B, X, Y)", "");
+                telemetry.addData("", "");
+            }
+
+            telemetry.addData("Selected Module:", selectedText);
             telemetry.addData("frontLeftEncoder", frontLeftEncoder.getVoltage());
             telemetry.addData("frontRightEncoder", frontRightEncoder.getVoltage());
             telemetry.addData("backLeftEncoder", backLeftEncoder.getVoltage());
