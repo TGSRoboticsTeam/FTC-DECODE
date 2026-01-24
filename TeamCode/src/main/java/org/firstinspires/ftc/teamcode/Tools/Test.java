@@ -32,16 +32,18 @@ public class Test extends LinearOpMode {
 
         waitForStart();
 
-        double turretRotate = -gamepad1.right_stick_x;
-        currentTurretRotation += turretRotate*TURRET_ROTATION_STEP;
-        currentTurretRotation = Math.max(MIN_TURRET_ROTATION, Math.max(currentTurretRotation, MAX_TURRET_ROTATION));//just clamping
+        while (opModeIsActive()) {
+            double turretRotate = -gamepad1.right_stick_x;
+            currentTurretRotation += turretRotate * TURRET_ROTATION_STEP;
+            currentTurretRotation = Math.max(MIN_TURRET_ROTATION, Math.max(currentTurretRotation, MAX_TURRET_ROTATION));//just clamping
 
-        turretRotation1.setPosition(currentTurretRotation);
-        turretRotation2.setPosition(1.0-currentTurretRotation);
+            turretRotation1.setPosition(currentTurretRotation);
+            turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-        // --- TELEMETRY (Simplified) ---
-        telemetry.addData("Turret Rotation:", "%.3f", currentTurretRotation);
-        telemetry.update();
+            // --- TELEMETRY (Simplified) ---
+            telemetry.addData("Turret Rotation:", "%.3f", currentTurretRotation);
+            telemetry.update();
+        }
     }
 
     // --- HELPER METHODS ---
