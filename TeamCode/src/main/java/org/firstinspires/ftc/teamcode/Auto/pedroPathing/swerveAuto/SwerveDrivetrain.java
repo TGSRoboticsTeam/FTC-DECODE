@@ -89,10 +89,22 @@ public class SwerveDrivetrain extends Drivetrain {
         double D = y + rot * (TRACK_WIDTH / R);
 
         // 5. Calculate Speeds
-        double flP = Math.hypot(B, D);
-        double frP = Math.hypot(B, C);
-        double blP = Math.hypot(A, D);
-        double brP = Math.hypot(A, C);
+        double flP = Math.hypot(B, D)/2;
+        double frP = Math.hypot(B, C)/2;
+        double blP = Math.hypot(A, D)/2;
+        double brP = Math.hypot(A, C)/2;
+
+        // 5.5 Normalize wheel speeds (CRITICAL)
+        double max = Math.max(
+                Math.max(flP, frP),
+                Math.max(blP, brP)
+        );
+        if (max > 1.0) {
+            flP /= max;
+            frP /= max;
+            blP /= max;
+            brP /= max;
+        }
 
         // 6. Calculate Angles (Radians) and store for runDrive
         targetAngles[0] = Math.atan2(B, D);
@@ -148,7 +160,9 @@ public class SwerveDrivetrain extends Drivetrain {
 
         // 5. Apply
         steerServo.setPower(servoPower);
+        speed = Math.max(-maxPowerScaling, Math.min(maxPowerScaling, speed));
         driveMotor.setPower(speed);
+        ;
     }
 
     private double getRawAngle(AnalogInput encoder) {
@@ -179,7 +193,7 @@ public class SwerveDrivetrain extends Drivetrain {
 
     @Override
     public void startTeleopDrive(boolean brakeMode) {
-        setZeroPowerBehavior(brakeMode ? DcMotor.ZeroPowerBehavior.BRAKE : DcMotor.ZeroPowerBehavior.FLOAT);
+        setZeroPowerBehavior(brakeMode ? DcMotor.ZeroPowerBehavior.FLOAT : DcMotor.ZeroPowerBehavior.FLOAT);
     }
 
     @Override public double xVelocity() { return xVel; }

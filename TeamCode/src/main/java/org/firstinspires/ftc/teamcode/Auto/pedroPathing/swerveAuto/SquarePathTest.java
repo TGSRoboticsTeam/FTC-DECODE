@@ -24,10 +24,10 @@ public class SquarePathTest extends OpMode {
     private boolean isPausing = false;
 
     // Pose Definitions
-    private final Pose startPose = new Pose(0, 0, Math.toRadians(0));
-    private final Pose corner1 = new Pose(24, 0, Math.toRadians(0));
-    private final Pose corner2 = new Pose(24, 24, Math.toRadians(0));
-    private final Pose corner3 = new Pose(0, 24, Math.toRadians(0));
+    private final Pose startPose = new Pose(0, 0, Math.toRadians(0)); //120
+    private final Pose corner1 = new Pose(24, 0, Math.toRadians(0)); //96
+    private final Pose corner2 = new Pose(24, -24, Math.toRadians(0)); //72, 96
+    private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
     private final Pose corner4 = new Pose(0, 0, Math.toRadians(0));
 
     private final Pose[] targets = {corner1, corner2, corner3, corner4};
@@ -104,8 +104,8 @@ public class SquarePathTest extends OpMode {
         telemetry.addLine("=== SWERVE DIAGNOSTICS ===");
         // This prints the string we formatted in SwerveDrivetrain.debugString()
         // Showing: Raw Angle (Servo) | Calc Angle (Robot Frame) | Target (Command)
-        telemetry.addLine(follower.getDrivetrain().debugString());
-        telemetry.update();
+        //telemetry.addLine(follower.getDrivetrain().debugString());
+        //telemetry.update();
 
         telemetry.addLine("\n=== MOVEMENT STATUS ===");
         if (pathIndex != -1) {
@@ -113,16 +113,19 @@ public class SquarePathTest extends OpMode {
             //telemetry.addData("State", isPausing ? "PAUSED (" + (5 - (int)pauseTimer.getElapsedTimeSeconds()) + "s)" : "MOVING");
 
             Pose target = targets[pathIndex];
-            // telemetry.addData("Target X", "%.2f", target.getX());
-            // telemetry.addData("Actual X", "%.2f", follower.getPose().getX());
-            // telemetry.addData("Target Y", "%.2f", target.getY());
-            // telemetry.addData("Actual Y", "%.2f", follower.getPose().getY());
+             telemetry.addData("Target X", "%.2f", target.getX());
+             telemetry.addData("Actual X", "%.2f", follower.getPose().getX());
+             telemetry.addData("Target Y", "%.2f", target.getY());
+             telemetry.addData("Actual Y", "%.2f", follower.getPose().getY());
+             telemetry.addData("Target Heading", "%.2f", target.getHeading());
+             telemetry.addData("Actual Heading", "%.2f", follower.getPose().getHeading());
+             telemetry.update();
         } else {
-            // telemetry.addData("Status", "DONE");
+             telemetry.addData("Status", "DONE");
         }
 
-        //telemetry.addLine("=== ODOMETRY RAW ===");
-        //telemetry.addData("Heading (Deg)", "%.2f", Math.toDegrees(follower.getPose().getHeading()));
+        telemetry.addLine("=== ODOMETRY RAW ===");
+        telemetry.addData("Heading (Deg)", "%.2f", Math.toDegrees(follower.getPose().getHeading()));
 
         telemetry.update();
     }

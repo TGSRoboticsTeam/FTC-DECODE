@@ -16,15 +16,15 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
         public static final double WHEELBASE = 13.544;
 
         // --- Swerve Drivetrain Constants ---
-        public static final boolean REVERSE_LEFT_FRONT = true;
+        public static final boolean REVERSE_LEFT_FRONT = false;
         public static final boolean REVERSE_RIGHT_FRONT = false;
         public static final boolean REVERSE_LEFT_BACK = true;
         public static final boolean REVERSE_RIGHT_BACK = false;
 
-        public static final double FRONT_LEFT_OFFSET  = 3.6709;
-        public static final double FRONT_RIGHT_OFFSET = 4.2173;
-        public static final double BACK_LEFT_OFFSET   = 0.8435;
-        public static final double BACK_RIGHT_OFFSET  = 3.2509;
+        public static final double FRONT_LEFT_OFFSET  = 2.74;
+        public static final double FRONT_RIGHT_OFFSET = 4.63;
+        public static final double BACK_LEFT_OFFSET   = 6.2;
+        public static final double BACK_RIGHT_OFFSET  = 2.737;
 
     //final double FRONT_LEFT_OFFSET  = 5.2417; // This value is in radians (0 to 2π)
     //final double FRONT_RIGHT_OFFSET = 5.7881;
@@ -63,7 +63,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
             FollowerConstants constants = new FollowerConstants();
             constants.coefficientsTranslationalPIDF.setCoefficients(TRANS_P, TRANS_I, TRANS_D, 0);
             constants.coefficientsHeadingPIDF.setCoefficients(HEAD_P, HEAD_I, HEAD_D, 0);
-            constants.coefficientsDrivePIDF.setCoefficients(DRIVE_P, DRIVE_I, DRIVE_D, 0.6, 0);
+            constants.coefficientsDrivePIDF.setCoefficients(DRIVE_P, DRIVE_I, DRIVE_D, 0.25, 0);
 
             constants.mass = 16.2; // Adjusted to match your example constants
             constants.centripetalScaling = 0.0005;
