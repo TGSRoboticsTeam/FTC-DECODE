@@ -32,21 +32,33 @@ public class Test extends LinearOpMode {
 
         waitForStart();
 
-        double turretRotate = -gamepad1.right_stick_x;
-        currentTurretRotation += turretRotate*TURRET_ROTATION_STEP;
-        currentTurretRotation = Math.max(MIN_TURRET_ROTATION, Math.max(currentTurretRotation, MAX_TURRET_ROTATION));//just clamping
+        while (opModeIsActive()) {
+            double turretRotate = -gamepad1.right_stick_x;
+            currentTurretRotation += turretRotate * TURRET_ROTATION_STEP;
+            currentTurretRotation = Math.max(MIN_TURRET_ROTATION, Math.max(currentTurretRotation, MAX_TURRET_ROTATION));//just clamping
 
-        turretRotation1.setPosition(currentTurretRotation);
-        turretRotation2.setPosition(1.0-currentTurretRotation);
+            if (gamepad1.a) {
+                currentTurretRotation = 0;
+            }
+            if (gamepad1.b) {
+                currentTurretRotation = 1.0;
+            }
 
-        // --- TELEMETRY (Simplified) ---
-        telemetry.addData("Turret Rotation:", "%.3f", currentTurretRotation);
-        telemetry.update();
+            turretRotation1.setPosition(currentTurretRotation);
+            turretRotation2.setPosition(1.0 - currentTurretRotation);
+
+            // --- TELEMETRY (Simplified) ---
+            telemetry.addData("Turret Rotation:", "%.3f", currentTurretRotation);
+            telemetry.update();
+        }
     }
 
     // --- HELPER METHODS ---
     private void initializeHardware() {
         turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1" );
         turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2" );
+
+        turretRotation1.setDirection(Servo.Direction.FORWARD);
+        turretRotation2.setDirection(Servo.Direction.REVERSE);
     }
 }

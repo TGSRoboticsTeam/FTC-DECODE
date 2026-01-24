@@ -77,6 +77,7 @@ public class SwerveDrivetrain extends Drivetrain {
         // 2. Rotate to Robot-Centric (Pedro vectors are usually Field-Centric)
         combined.rotateVector(-robotHeading);
 
+         //Division by 2 added to slow this thing down
         double x = combined.getXComponent()/2;
         double y = combined.getYComponent()/2;
 
