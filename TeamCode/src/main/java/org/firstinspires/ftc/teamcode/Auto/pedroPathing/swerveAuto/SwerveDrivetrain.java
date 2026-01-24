@@ -55,7 +55,8 @@ public class SwerveDrivetrain extends Drivetrain {
         setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         this.nominalVoltage = 12.0;
-        this.maxPowerScaling = 0.3;
+        this.maxPowerScaling = 0.5;
+
     }
 
     private void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior behavior) {
@@ -76,8 +77,8 @@ public class SwerveDrivetrain extends Drivetrain {
         // 2. Rotate to Robot-Centric (Pedro vectors are usually Field-Centric)
         combined.rotateVector(-robotHeading);
 
-        double x = combined.getXComponent();
-        double y = combined.getYComponent();
+        double x = combined.getXComponent()/2;
+        double y = combined.getYComponent()/2;
 
         // 3. Determine Rotation Power
         double rot = headingPower.getMagnitude() * Math.signum(MathFunctions.getTurnDirection(robotHeading, headingPower.getTheta()));

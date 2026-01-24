@@ -20,11 +20,18 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
         public static final boolean REVERSE_RIGHT_FRONT = false;
         public static final boolean REVERSE_LEFT_BACK = true;
         public static final boolean REVERSE_RIGHT_BACK = false;
-
+/*
         public static final double FRONT_LEFT_OFFSET  = 3.6709;
         public static final double FRONT_RIGHT_OFFSET = 4.2173;
         public static final double BACK_LEFT_OFFSET   = 0.8435;
         public static final double BACK_RIGHT_OFFSET  = 3.2509;
+
+ */
+
+        public static final double FRONT_LEFT_OFFSET  = 6.00;
+        public static final double FRONT_RIGHT_OFFSET = 4.61;
+        public static  final double BACK_LEFT_OFFSET   = 0;
+        public static final double BACK_RIGHT_OFFSET  = 3.0;
 
     //final double FRONT_LEFT_OFFSET  = 5.2417; // This value is in radians (0 to 2π)
     //final double FRONT_RIGHT_OFFSET = 5.7881;
