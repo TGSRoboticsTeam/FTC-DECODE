@@ -17,7 +17,7 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 @TeleOp(name = "PotatoSwerve", group = "Swerve")
 public class PotatoSwerve extends LinearOpMode {
 
-    // HARDWARE DECLARATIONS
+    // ---------------- HARDWARE ----------------
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
@@ -27,10 +27,13 @@ public class PotatoSwerve extends LinearOpMode {
     private DcMotor frontIntake, backIntake;
     private Servo turretRotation1, turretRotation2;
 
-    // REV Color Sensor V3s (config names: frontColor, centerColor, backColor)
+    // NEW: Trigger servo
+    private Servo trigger;
+
+    // Color sensors
     private NormalizedColorSensor frontColor, centerColor, backColor;
 
-    // --- SWERVE VARIABLES ---
+    // ---------------- CONSTANTS ----------------
     final double TRACK_WIDTH = 17.258;
     final double WHEELBASE   = 13.544;
     final double R = Math.hypot(TRACK_WIDTH, WHEELBASE);
@@ -48,34 +51,33 @@ public class PotatoSwerve extends LinearOpMode {
     final double MAX_SPEED_SLOW_MODE = 0.2;
 
     final int FRAMES_TO_PLANT_WHEELS = 5;
-    private int framesSinceLastMoved = 0;
 
-    // Turret
-    final double MIN_TURRET_ROTATION = 0.0;
-    final double MAX_TURRET_ROTATION = 1.0;
-    final double TURRET_ROTATION_STEP = 0.01;
-    private double currentTurretRotation = 0.5;
-
-    // Flywheel
-    final double FLYWHEEL_DEFAULT_POWER = 0.75;
-    final double FLYWHEEL_POWER_STEP = 0.005;
-    private double flyPower = FLYWHEEL_DEFAULT_POWER;
-    private boolean isFlywheelOn = false;
-    private boolean leftTriggerPreviouslyPressed = false;
-
-    // Intake
-    private boolean isIntakeOn = false;
-    private boolean rightTriggerPreviouslyPressed = false;
-
-    // Two intake modes toggled by DPAD LEFT
-    // Mode 1: both forward; front=100%, back=25%
-    // Mode 2: both reverse; back=100%, front=25%
-    private boolean intakeModeOne = true;
-    private boolean leftDpadPreviouslyPressed = false;
+    // Trigger servo constants
+    final double TRIGGER_REST = 0.0;
+    final double TRIGGER_DELTA = 20.0 / 300.0; // 20 degrees on 300-degree servo
+    final long TRIGGER_DELAY_MS = 100;
 
     // Intake scaling
     final double INTAKE_FULL = 1.0;
-    final double INTAKE_QUARTER = 0.25;
+    final double INTAKE_QUARTER = 0.3;
+
+    // ---------------- STATE ----------------
+    private int framesSinceLastMoved = 0;
+
+    private double currentTurretRotation = 0.5;
+
+    private double flyPower = 0.75;
+    private boolean isFlywheelOn = false;
+    private boolean leftTriggerPreviouslyPressed = false;
+
+    private boolean isIntakeOn = false;
+    private boolean rightTriggerPreviouslyPressed = false;
+
+    private boolean intakeModeOne = true;
+    private boolean leftDpadPreviouslyPressed = false;
+
+    // Trigger debounce
+    private boolean aPreviouslyPressed = false;
 
     @Override
     public void runOpMode() {
@@ -83,8 +85,7 @@ public class PotatoSwerve extends LinearOpMode {
         initializeHardware();
 
         telemetry.addLine("PotatoSwerve ready");
-        telemetry.addLine("Color sensors display RGB only");
-        telemetry.addLine("Intake: RB toggles ON/OFF; DPAD LEFT toggles Mode 1/2");
+        telemetry.addLine("A = fire trigger servo");
         telemetry.update();
 
         waitForStart();
@@ -93,15 +94,13 @@ public class PotatoSwerve extends LinearOpMode {
 
         while (opModeIsActive()) {
 
-            // Speed Limiter
+            // ---------------- DRIVE ----------------
             double speedMultiplier = gamepad1.right_bumper ? MAX_SPEED_SLOW_MODE : MAX_SPEED_GLOBAL;
 
-            // ------ DRIVE INPUTS (ROBOT-CENTRIC) ------ //
             double robotY = -gamepad1.left_stick_y * speedMultiplier;
             double robotX =  gamepad1.left_stick_x * speedMultiplier;
             double rot    =  gamepad1.right_stick_x * speedMultiplier;
 
-            // Swerve Kinematics
             double A = robotX - rot * (WHEELBASE / R);
             double B = robotX + rot * (WHEELBASE / R);
             double C = robotY - rot * (TRACK_WIDTH / R);
@@ -128,10 +127,9 @@ public class PotatoSwerve extends LinearOpMode {
                 framesSinceLastMoved++;
             }
 
-            // Lock wheels ('X' formation)
             if (gamepad1.left_stick_button || framesSinceLastMoved >= FRAMES_TO_PLANT_WHEELS) {
-                targetAngleFL = -Math.PI / 4; targetAngleFR =  Math.PI / 4;
-                targetAngleBL =  Math.PI / 4; targetAngleBR = -Math.PI / 4;
+                targetAngleFL = -Math.PI / 4; targetAngleFR = Math.PI / 4;
+                targetAngleBL = Math.PI / 4;  targetAngleBR = -Math.PI / 4;
                 speedFL = speedFR = speedBL = speedBR = 0;
             }
 
@@ -140,43 +138,34 @@ public class PotatoSwerve extends LinearOpMode {
             runModule(backLeftDrive, backLeftSteer, backLeftEncoder, BACK_LEFT_OFFSET, speedBL, targetAngleBL);
             runModule(backRightDrive, backRightSteer, backRightEncoder, BACK_RIGHT_OFFSET, speedBR, targetAngleBR);
 
-            // Turret (kept as your modifications)
-            currentTurretRotation += -gamepad1.right_stick_x * TURRET_ROTATION_STEP;
-            currentTurretRotation = clamp(currentTurretRotation, MIN_TURRET_ROTATION, MAX_TURRET_ROTATION);
+            // ---------------- TURRET ----------------
+            currentTurretRotation += -gamepad1.right_stick_x * 0.01;
+            currentTurretRotation = clamp(currentTurretRotation, 0, 1);
             turretRotation1.setPosition(currentTurretRotation);
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-            // Flywheel toggle (gamepad1 left_bumper)
+            // ---------------- FLYWHEEL ----------------
             boolean lb = gamepad1.left_bumper;
             if (lb && !leftTriggerPreviouslyPressed) isFlywheelOn = !isFlywheelOn;
             leftTriggerPreviouslyPressed = lb;
 
-            if (gamepad2.dpad_up) flyPower += FLYWHEEL_POWER_STEP;
-            if (gamepad2.dpad_down) flyPower -= FLYWHEEL_POWER_STEP;
-            flyPower = clamp(flyPower, 0, 1);
-            if (gamepad2.b) flyPower = FLYWHEEL_DEFAULT_POWER;
-
             leftFly.setPower(isFlywheelOn ? flyPower : 0);
             rightFly.setPower(isFlywheelOn ? flyPower : 0);
 
-            // Intake toggle ON/OFF (gamepad1 right_bumper)
+            // ---------------- INTAKE ----------------
             boolean rb = gamepad1.right_bumper;
             if (rb && !rightTriggerPreviouslyPressed) isIntakeOn = !isIntakeOn;
             rightTriggerPreviouslyPressed = rb;
 
-            // Intake mode toggle (gamepad1 dpad_left)
             boolean ld = gamepad1.dpad_left;
             if (ld && !leftDpadPreviouslyPressed) intakeModeOne = !intakeModeOne;
             leftDpadPreviouslyPressed = ld;
 
-            // Apply intake behavior
             if (isIntakeOn) {
                 if (intakeModeOne) {
-                    // Mode 1: both forward; front=100%, back=25%
                     frontIntake.setPower(flyPower * INTAKE_FULL);
                     backIntake.setPower(flyPower * INTAKE_QUARTER);
                 } else {
-                    // Mode 2: both reverse; back=100%, front=25%
                     backIntake.setPower(-flyPower * INTAKE_FULL);
                     frontIntake.setPower(-flyPower * INTAKE_QUARTER);
                 }
@@ -185,14 +174,19 @@ public class PotatoSwerve extends LinearOpMode {
                 backIntake.setPower(0);
             }
 
-            // Color telemetry (RGB only)
+            // ---------------- TRIGGER SERVO ----------------
+            boolean a = gamepad1.a;
+            if (a && !aPreviouslyPressed) {
+                trigger.setPosition(TRIGGER_REST + TRIGGER_DELTA);
+                sleep(TRIGGER_DELAY_MS);
+                trigger.setPosition(TRIGGER_REST);
+            }
+            aPreviouslyPressed = a;
+
+            // ---------------- COLOR TELEMETRY ----------------
             addRgbTelemetry("FRONT", frontColor);
             addRgbTelemetry("CENTER", centerColor);
             addRgbTelemetry("BACK", backColor);
-
-            telemetry.addData("Intake", "%s | %s",
-                    isIntakeOn ? "ON" : "OFF",
-                    intakeModeOne ? "MODE 1 (FWD: Front100 Back25)" : "MODE 2 (REV: Back100 Front25)");
 
             telemetry.update();
         }
@@ -226,6 +220,9 @@ public class PotatoSwerve extends LinearOpMode {
         turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1");
         turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2");
 
+        trigger = hardwareMap.get(Servo.class, "trigger");
+        trigger.setPosition(TRIGGER_REST);
+
         frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
         centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
         backColor   = hardwareMap.get(NormalizedColorSensor.class, "backColor");
@@ -235,22 +232,13 @@ public class PotatoSwerve extends LinearOpMode {
                         RevHubOrientationOnRobot.LogoFacingDirection.UP,
                         RevHubOrientationOnRobot.UsbFacingDirection.FORWARD)));
 
-        // Drive directions (as you had them)
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
-        // Flywheel directions (your update)
         leftFly.setDirection(DcMotor.Direction.REVERSE);
         rightFly.setDirection(DcMotor.Direction.FORWARD);
-
-        // Your other accessory config changes
-        frontIntake.setDirection(DcMotor.Direction.FORWARD);
-        backIntake.setDirection(DcMotor.Direction.FORWARD);
-
-        leftFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-        rightFly.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive);
     }
