@@ -47,7 +47,7 @@ public class SquarePathTest extends OpMode {
     private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
 
     // 4. Move Left 24 inches (+Y) - Robot is back at (0, 0)
->>>>>>> 2db9c0ed4381448cbc3abe2a5de2790c2428c9ed
+>>>>>>>
     private final Pose corner4 = new Pose(0, 0, Math.toRadians(0));
 
     // Store targets in array for easy access by index

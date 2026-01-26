@@ -59,12 +59,12 @@ public static final double FRONT_LEFT_OFFSET  = 2.74;
     // --- Pinpoint Localizer Offsets (in mm) ---
         // These define where the pods are relative to the robot's center.
         // Forward Pod: Measures X movement.
-        public static final double FORWARD_POD_OFFSET_X = -84.0; // Distance forward/back from center (mm)
+        public static final double FORWARD_POD_OFFSET_X = -15.0; // Distance forward/back from center (mm)
         public static final double FORWARD_POD_OFFSET_Y = 0.0;   // Distance left/right from center (mm) - usually 0 if centered
 
         // Strafe Pod: Measures Y movement.
         public static final double STRAFE_POD_OFFSET_X = 0.0;    // Distance forward/back from center (mm)
-        public static final double STRAFE_POD_OFFSET_Y = -168.0; // Distance left/right from center (mm)
+        public static final double STRAFE_POD_OFFSET_Y = -147.0; // Distance left/right from center (mm)
 
         // --- Follower PID Constants ---
         // Start conservative. Increase P if sluggish, Decrease if oscillating.
