@@ -14,7 +14,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-//@Disabled
+@Disabled
 @TeleOp(name = "Test", group = "Tools")
 public class Test extends LinearOpMode {
     private Servo turretRotation1, turretRotation2;
@@ -37,7 +37,6 @@ public class Test extends LinearOpMode {
             currentTurretRotation += turretRotate * TURRET_ROTATION_STEP;
             currentTurretRotation = Math.max(MIN_TURRET_ROTATION, Math.max(currentTurretRotation, MAX_TURRET_ROTATION));//just clamping
 
-<<<<<<< HEAD
             if (gamepad1.a) {
                 currentTurretRotation = 0;
             }
@@ -48,11 +47,9 @@ public class Test extends LinearOpMode {
             turretRotation1.setPosition(currentTurretRotation);
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-=======
             turretRotation1.setPosition(currentTurretRotation);
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
->>>>>>> 8895c0a2c3aea9f4120bc595fcd20ab8cf9886f9
             // --- TELEMETRY (Simplified) ---
             telemetry.addData("Turret Rotation:", "%.3f", currentTurretRotation);
             telemetry.update();

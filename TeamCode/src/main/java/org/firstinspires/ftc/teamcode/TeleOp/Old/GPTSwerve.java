@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.TeleOp.Old;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -13,7 +14,7 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-
+@Disabled
 @TeleOp(name = "GraciousProfessionalismTerrificSwerve", group = "Swerve")
 public class GPTSwerve extends LinearOpMode {
 
