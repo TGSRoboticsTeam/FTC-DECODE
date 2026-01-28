@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.Servo;
-@Disabled
 @TeleOp(name = "TriggerTest", group = "Tools")
 public class TriggerTest extends LinearOpMode {
 
@@ -12,15 +11,15 @@ public class TriggerTest extends LinearOpMode {
 
     // Trigger positions
     final double TRIGGER_ZERO = 0.0;
-    final double TRIGGER_DOWN = 0.2;
-    final double TRIGGER_UP   = 0.25;
+    final double TRIGGER_DOWN = 0.5;
+    final double TRIGGER_UP   = 0.1;
 
     private double currentTriggerPosition = TRIGGER_DOWN;
 
     @Override
     public void runOpMode() {
 
-        trigger = hardwareMap.get(Servo.class, "trigger");
+        trigger = hardwareMap.get(Servo.class, "adjuster");
 
         // Start in safe position
         trigger.setPosition(currentTriggerPosition);
