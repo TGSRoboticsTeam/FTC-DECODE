@@ -14,7 +14,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
+@Disabled
 @TeleOp(name = "Test", group = "Tools")
 public class Test extends LinearOpMode {
     private Servo turretRotation1, turretRotation2;

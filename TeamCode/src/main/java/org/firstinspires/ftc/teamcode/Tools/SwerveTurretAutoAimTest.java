@@ -1,212 +1,184 @@
-package org.firstinspires.ftc.teamcode.Tools;
+package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
-@TeleOp(name = "TurretAutoAim_SimplePixel_DEBUG", group = "Tools")
+import java.util.List;
+
+@TeleOp(name = "SwerveTurretAutoAimTest", group = "TeleOp")
 public class SwerveTurretAutoAimTest extends LinearOpMode {
 
-    /* ===================== TURRET SERVOS ===================== */
+    // --- HARDWARE ---
     private Servo turretRotation1, turretRotation2;
 
-    private static final double MIN_TURRET = 0.0;
-    private static final double MAX_TURRET = 1.0;
+    // --- TURRET SERVO LIMITS (same idea as your code) ---
+    private static final double MIN_TURRET_ROTATION = 0.0;
+    private static final double MAX_TURRET_ROTATION = 1.0;
 
-    // step each loop when tag is off-center
-    private static final double AIM_STEP = 0.01;
+    // Start centered
+    private double currentTurretRotation = (MIN_TURRET_ROTATION + MAX_TURRET_ROTATION) / 2.0;
 
-    // how close to center counts as "centered"
-    private static final double PIXEL_DEADBAND = 20.0;
+    // --- YOUR GEAR RATIO NOTE ---
+    // "For every 1 rotation of the gears we have .7885 rotation of the turret"
+    // If the servo-side gear rotation produces turret rotation at 0.7885:1,
+    // then to get the same turret motion you need to command servo a bit more:
+    private static final double TURRET_PER_GEAR = 0.7885;
+    private static final double GEAR_TO_TURRET_COMP = 1.0 / TURRET_PER_GEAR; // ~1.268
 
-    // YOU SAID YOU FLIPPED SIGN ON YOUR ROBOT
-    // If it moves the wrong direction, flip this again.
-    private static final double AIM_SIGN = -1.0;
-
-    private double turretPos = 0.5;
-
-    /* ===================== CAMERA / APRILTAG ===================== */
+    // --- VISION ---
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
 
-    // CenterStage goal IDs (change if your game uses different IDs)
-    private static final int TAG_BLUE_GOAL = 20;
-    private static final int TAG_RED_GOAL  = 24;
+    // DECODE goal tag IDs (manual)
+    private static final int TAG_ID_BLUE_GOAL = 20;
+    private static final int TAG_ID_RED_GOAL  = 24;
 
-    private int targetId = TAG_RED_GOAL;
+    // --- CAMERA ORIENTATION ---
+    // If your camera is mounted "portrait" (rotated 90 degrees), set true.
+    // Then we use centerY instead of centerX for left/right aiming.
+    private static final boolean CAMERA_IS_PORTRAIT = true;
 
-    private boolean autoAimEnabled = true;
-    private boolean togglePrev = false;
+    // --- AIM TUNING ---
+    // Very small steps, as requested. Start here, then adjust.
+    private static final double KP = 0.010;            // proportional gain on normalized error
+    private static final double MAX_STEP = 0.0030;      // absolute max step per loop (tiny)
+    private static final double DEADBAND_NORM = 0.02;   // ~2% of half-frame
 
-    // Camera mounted vertically: use tag.center.y
-    // Midpoint assumes 640x480 (midpoint Y = 240). Change if stream size differs.
-    private static final double FRAME_MID_Y = 240.0;
-
-    /* ===================== DEBUG / TIMING ===================== */
-    private long lastSeenMs = 0;
-
-    private long prevLoopMs = 0;
-    private long loopDtMs = 0;
+    // Choose which goal to aim at (toggle in TeleOp)
+    private int targetTagId = TAG_ID_RED_GOAL;
 
     @Override
     public void runOpMode() {
-
-        initHardware();
+        initializeHardware();
         initVision();
 
-        telemetry.addLine("TurretAutoAim_SimplePixel_DEBUG ready");
-        telemetry.addLine("GP2: LB toggle autoaim | dpad_left=BLUE | dpad_right=RED | RSX manual when autoaim OFF");
-        telemetry.addLine("Camera vertical: using tag.center.y for aiming axis");
+        telemetry.addLine("Turret Auto Aim Ready");
+        telemetry.addLine("Gamepad:");
+        telemetry.addLine("  Y = aim RED goal (ID 24)");
+        telemetry.addLine("  X = aim BLUE goal (ID 20)");
+        telemetry.addLine("  Right stick X = manual trim (overrides auto while moved)");
         telemetry.update();
 
         waitForStart();
 
         while (opModeIsActive()) {
 
-            long now = System.currentTimeMillis();
-            if (prevLoopMs == 0) prevLoopMs = now;
-            loopDtMs = now - prevLoopMs;
-            prevLoopMs = now;
+            // Target select
+            if (gamepad1.y) targetTagId = TAG_ID_RED_GOAL;
+            if (gamepad1.x) targetTagId = TAG_ID_BLUE_GOAL;
 
-            /* ===================== CONTROLS ===================== */
-            if (gamepad2.dpad_left)  targetId = TAG_BLUE_GOAL;
-            if (gamepad2.dpad_right) targetId = TAG_RED_GOAL;
+            // Manual override (trim)
+            double manual = -gamepad1.right_stick_x;
+            boolean manualActive = Math.abs(manual) > 0.08;
 
-            boolean toggle = gamepad2.left_bumper;
-            if (toggle && !togglePrev) autoAimEnabled = !autoAimEnabled;
-            togglePrev = toggle;
+            AprilTagDetection target = findTargetDetection(targetTagId);
 
-            AprilTagDetection det = getDetectionForId(targetId);
+            if (manualActive) {
+                // Manual nudging (still small)
+                double manualStep = manual * 0.004; // small manual rate
+                applyTurretDelta(manualStep);
+            } else if (target != null) {
+                // AUTO AIM: center the tag in the image with tiny steps.
+                // Use X for normal landscape, or Y if camera is rotated portrait.
+                double measured = CAMERA_IS_PORTRAIT ? target.center.y : target.center.x;
 
-            /* ===================== DEBUG VARIABLES ===================== */
-            boolean tagVisible = (det != null);
+                // These are pixel-ish coordinates in the camera frame.
+                // We need a "frame center" value. The SDK doesn’t hand us width/height directly here,
+                // so we estimate by using the tag's observed center bounds:
+                // Best practice: set these to your stream resolution if you know it.
+                // If you don't, this works "well enough" for basic centering:
+                double assumedFrameSize = CAMERA_IS_PORTRAIT ? 720.0 : 1280.0; // adjust if needed
+                double frameCenter = assumedFrameSize / 2.0;
 
-            double cy = Double.NaN;
-            double errorPx = Double.NaN;
+                double errorPixels = measured - frameCenter;
+                double halfFrame = assumedFrameSize / 2.0;
+                double errorNorm = errorPixels / halfFrame; // -1..+1-ish
 
-            boolean inDeadband = false;
-            String moveDirText = "NONE";
+                // Deadband so it stops hunting when basically centered
+                if (Math.abs(errorNorm) > DEADBAND_NORM) {
+                    // Proportional step, clipped very small
+                    double step = clip(errorNorm * KP, -MAX_STEP, MAX_STEP);
 
-            double appliedDelta = 0.0;
-            double turretBefore = turretPos;
+                    // Convert “desired turret movement” to “servo command” using your ratio note
+                    step *= GEAR_TO_TURRET_COMP;
 
-            /* ===================== AIM LOGIC ===================== */
-            if (!autoAimEnabled) {
-                // Manual turret control when autoaim OFF
-                double manual = -gamepad2.right_stick_x;
-                if (Math.abs(manual) < 0.05) manual = 0;
-
-                appliedDelta = manual * 0.01;
-                turretPos = clamp(turretPos + appliedDelta, MIN_TURRET, MAX_TURRET);
-                moveDirText = (manual == 0) ? "MANUAL HOLD" : "MANUAL";
-
-            } else {
-                // Auto aim ON
-                if (tagVisible) {
-                    // ALWAYS compute error if detection exists (fixes your NaN issue)
-                    cy = det.center.y;
-                    errorPx = cy - FRAME_MID_Y;     // + means "below center"
-                    inDeadband = Math.abs(errorPx) <= PIXEL_DEADBAND;
-
-                    lastSeenMs = now;
-
-                    if (!inDeadband) {
-                        double dir = (errorPx > 0) ? +1.0 : -1.0;
-                        moveDirText = (dir > 0) ? "POS" : "NEG";
-
-                        appliedDelta = AIM_SIGN * dir * AIM_STEP;
-                        turretPos = clamp(turretPos + appliedDelta, MIN_TURRET, MAX_TURRET);
-                    } else {
-                        moveDirText = "DEADBAND (HOLD)";
-                        appliedDelta = 0.0;
-                    }
-                } else {
-                    moveDirText = "NO TAG (HOLD)";
-                    appliedDelta = 0.0;
+                    // Sign: if tag is right of center, rotate turret right (you may invert if needed)
+                    applyTurretDelta(step);
                 }
             }
 
-            /* ===================== APPLY SERVOS ===================== */
-            turretRotation1.setPosition(turretPos);
-            turretRotation2.setPosition(1.0 - turretPos);
+            // Set the mirrored servos
+            turretRotation1.setPosition(currentTurretRotation);
+            turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-            /* ===================== TELEMETRY (EVERYTHING) ===================== */
-            telemetry.addData("AutoAim", autoAimEnabled ? "ON" : "OFF");
-            telemetry.addData("Target", targetId == TAG_RED_GOAL ? "RED (24)" : "BLUE (20)");
+            // Telemetry
+            telemetry.addData("Target Tag", "%s (ID %d)",
+                    (targetTagId == TAG_ID_RED_GOAL ? "RED GOAL" : "BLUE GOAL"),
+                    targetTagId);
 
-            telemetry.addData("AIM_SIGN", "%.1f", AIM_SIGN);
-            telemetry.addData("AIM_STEP", "%.3f", AIM_STEP);
-            telemetry.addData("DEADBAND(px)", "%.1f", PIXEL_DEADBAND);
-            telemetry.addData("FRAME_MID_Y", "%.1f", FRAME_MID_Y);
-
-            telemetry.addData("Tag Visible", tagVisible);
-
-            if (tagVisible) {
-                telemetry.addData("Tag ID", det.id);
-                telemetry.addData("Tag center (x,y)", "%.1f, %.1f", det.center.x, det.center.y);
-                telemetry.addData("Axis used", "center.y (camera vertical)");
-                telemetry.addData("errorPx = y-mid", "%.1f", errorPx);
-                telemetry.addData("In deadband?", inDeadband);
-
-                if (det.ftcPose != null) {
-                    telemetry.addData("Pose range(in)", "%.1f", det.ftcPose.range);
-                    telemetry.addData("Pose bearing(deg)", "%.2f", det.ftcPose.bearing);
-                    telemetry.addData("Pose yaw(deg)", "%.2f", det.ftcPose.yaw);
-                }
+            if (target != null) {
+                telemetry.addData("Tag Seen", "YES");
+                telemetry.addData("Tag Center (x,y)", "%.1f, %.1f", target.center.x, target.center.y);
             } else {
-                telemetry.addData("Last seen (ms ago)", (lastSeenMs == 0) ? "never" : (now - lastSeenMs));
+                telemetry.addData("Tag Seen", "NO");
             }
 
-            telemetry.addData("MoveDir", moveDirText);
-            telemetry.addData("Turret before/after", "%.3f -> %.3f", turretBefore, turretPos);
-            telemetry.addData("Applied Δpos", "%.4f", appliedDelta);
-            telemetry.addData("Loop dt (ms)", loopDtMs);
-
+            telemetry.addData("Turret Pos", "%.4f", currentTurretRotation);
+            telemetry.addData("Camera Portrait?", CAMERA_IS_PORTRAIT);
             telemetry.update();
         }
 
+        // Cleanup
         if (visionPortal != null) visionPortal.close();
     }
 
-    /* ===================== INIT ===================== */
+    // --- HELPERS ---
 
-    private void initHardware() {
+    private void initializeHardware() {
         turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1");
         turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2");
 
         turretRotation1.setDirection(Servo.Direction.FORWARD);
         turretRotation2.setDirection(Servo.Direction.REVERSE);
 
-        turretRotation1.setPosition(turretPos);
-        turretRotation2.setPosition(1.0 - turretPos);
+        turretRotation1.setPosition(currentTurretRotation);
+        turretRotation2.setPosition(1.0 - currentTurretRotation);
     }
 
     private void initVision() {
-        aprilTag = AprilTagProcessor.easyCreateWithDefaults();
-        visionPortal = VisionPortal.easyCreateWithDefaults(
-                hardwareMap.get(WebcamName.class, "turretCam"),
-                aprilTag
-        );
+        aprilTag = new AprilTagProcessor.Builder()
+                // If you know your tag size, you can set it for pose data; not required just to center.
+                .build();
+
+        visionPortal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(WebcamName.class, "turretCam"))
+                .addProcessor(aprilTag)
+                .build();
     }
 
-    /* ===================== HELPERS ===================== */
+    private AprilTagDetection findTargetDetection(int wantedId) {
+        List<AprilTagDetection> detections = aprilTag.getDetections();
+        if (detections == null || detections.isEmpty()) return null;
 
-    private AprilTagDetection getDetectionForId(int id) {
-        if (aprilTag == null) return null;
-        for (AprilTagDetection d : aprilTag.getDetections()) {
-            if (d != null && d.id == id) return d;
+        // Prefer exact match; otherwise return null (keeps behavior simple/predictable)
+        for (AprilTagDetection d : detections) {
+            if (d != null && d.id == wantedId) return d;
         }
         return null;
     }
 
-    private double clamp(double v, double lo, double hi) {
+    private void applyTurretDelta(double delta) {
+        currentTurretRotation += delta;
+        currentTurretRotation = clip(currentTurretRotation, MIN_TURRET_ROTATION, MAX_TURRET_ROTATION);
+    }
+
+    private double clip(double v, double lo, double hi) {
         return Math.max(lo, Math.min(hi, v));
     }
 }
