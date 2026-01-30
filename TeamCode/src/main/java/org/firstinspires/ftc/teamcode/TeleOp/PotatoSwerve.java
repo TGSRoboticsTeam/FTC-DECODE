@@ -64,17 +64,20 @@ public class PotatoSwerve extends LinearOpMode {
     final double MAX_TURRET_ROTATION = 1.0;
     final double TURRET_DEADBAND = 0.05;
 
-    final double TURRET_RATE_FAST = 0.020;
+    final double TURRET_RATE_FAST = 0.030;
     final double TURRET_RATE_SLOW = 0.006;
 
     private double currentTurretRotation = 0.5;
+
+    // ✅ NEW: edge-detect for GP2 A turret center
+    private boolean turretCenterPrev = false;
 
     /* ===================== ADJUSTER CONTROL (GP2 LSY, slow with GP2 RB, faster than turret) ===================== */
     final double ADJUSTER_MIN = 0.0;   // up
     final double ADJUSTER_MAX = 0.75;  // top
     final double ADJUSTER_DEADBAND = 0.05;
 
-    final double ADJUSTER_RATE_FAST = 0.040;
+    final double ADJUSTER_RATE_FAST = 0.050;
     final double ADJUSTER_RATE_SLOW = 0.015;
 
     private double adjusterPos = 0.0;
@@ -106,7 +109,7 @@ public class PotatoSwerve extends LinearOpMode {
     private boolean flywheelOn = false;
     private boolean flyTogglePrev = false;
 
-    final double FLYWHEEL_DEFAULT_POWER = 0.75;
+    final double FLYWHEEL_DEFAULT_POWER = 1;
     final double FLYWHEEL_POWER_STEP = 0.01;
 
     private double flyPower = FLYWHEEL_DEFAULT_POWER;
@@ -125,7 +128,7 @@ public class PotatoSwerve extends LinearOpMode {
     final long FLYWHEEL_SPINUP_MS = 1000;
     final long FLYWHEEL_SPINDOWN_MS = 300;
 
-    final long FEED_TIMEOUT_MS = 1000;
+    final long FEED_TIMEOUT_MS = 1250;
 
     /* ===================== DISTANCE BALL DETECTION (HYSTERESIS) ===================== */
     final double FRONT_ON_CM  = 2.5, FRONT_OFF_CM  = 3.2;
@@ -265,6 +268,15 @@ public class PotatoSwerve extends LinearOpMode {
             runModule(backLeftDrive,   backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   speedBackLeft,   targetAngleBL);
             runModule(backRightDrive,  backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  speedBackRight,  targetAngleBR);
 
+            /* ===================== TURRET CENTER (GP2 A -> 0.5) ===================== */
+            boolean centerBtn = gamepad2.a;
+            if (centerBtn && !turretCenterPrev) {
+                currentTurretRotation = 0.5;
+                turretRotation1.setPosition(currentTurretRotation);
+                turretRotation2.setPosition(1.0 - currentTurretRotation);
+            }
+            turretCenterPrev = centerBtn;
+
             /* ===================== TURRET (GP2 RSX, slow with GP2 RB) ===================== */
             double turretInput = -gamepad2.right_stick_x;
             if (Math.abs(turretInput) < TURRET_DEADBAND) turretInput = 0;
@@ -277,7 +289,7 @@ public class PotatoSwerve extends LinearOpMode {
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
             /* ===================== ADJUSTER (GP2 LSY, slow with GP2 RB) ===================== */
-            double adjInput = -gamepad2.left_stick_y;
+            double adjInput = gamepad2.left_stick_y;
             if (Math.abs(adjInput) < ADJUSTER_DEADBAND) adjInput = 0;
 
             double adjRate = gamepad2.right_bumper ? ADJUSTER_RATE_SLOW : ADJUSTER_RATE_FAST;
@@ -299,7 +311,7 @@ public class PotatoSwerve extends LinearOpMode {
             }
 
             /* ===================== FLYWHEEL TOGGLE (GP1 LT) ===================== */
-            boolean flyToggle = gamepad1.left_trigger > 0.5;
+           /* boolean flyToggle = gamepad1.left_trigger > 0.5;
             if (flyToggle && !flyTogglePrev) flywheelOn = !flywheelOn;
             flyTogglePrev = flyToggle;
 
@@ -311,7 +323,7 @@ public class PotatoSwerve extends LinearOpMode {
                     leftFly.setPower(0);
                     rightFly.setPower(0);
                 }
-            }
+            }*/
 
             /* ===================== LAUNCH START (GP1 A) ===================== */
             if (launchState == LaunchState.IDLE && gamepad1.a) {
@@ -324,7 +336,7 @@ public class PotatoSwerve extends LinearOpMode {
 
                 trigger.setPosition(TRIGGER_HOME);
 
-                clearRetryCount = 0;
+                clearRetryCount = 1;
                 stateTimer = System.currentTimeMillis();
                 launchState = LaunchState.SPINUP;
             }
@@ -370,7 +382,7 @@ public class PotatoSwerve extends LinearOpMode {
 
                     if (System.currentTimeMillis() - stateTimer >= TRIGGER_RESET_WAIT_MS) {
                         clearTarget = ClearTarget.AFTER_1;
-                        clearRetryCount = 0;
+                        clearRetryCount = 1;
                         stateTimer = System.currentTimeMillis();
                         launchState = LaunchState.CLEAR_CENTER;
                     }
@@ -410,7 +422,7 @@ public class PotatoSwerve extends LinearOpMode {
 
                     if (System.currentTimeMillis() - stateTimer >= TRIGGER_RESET_WAIT_MS) {
                         clearTarget = ClearTarget.AFTER_2;
-                        clearRetryCount = 0;
+                        clearRetryCount = 1;
                         stateTimer = System.currentTimeMillis();
                         launchState = LaunchState.CLEAR_CENTER;
                     }
@@ -450,7 +462,7 @@ public class PotatoSwerve extends LinearOpMode {
 
                     if (System.currentTimeMillis() - stateTimer >= TRIGGER_RESET_WAIT_MS) {
                         clearTarget = ClearTarget.BEFORE_SPINDOWN;
-                        clearRetryCount = 0;
+                        clearRetryCount = 1;
                         stateTimer = System.currentTimeMillis();
                         launchState = LaunchState.CLEAR_CENTER;
                     }
@@ -462,7 +474,7 @@ public class PotatoSwerve extends LinearOpMode {
                     trigger.setPosition(TRIGGER_HOME);
 
                     if (isCenterEmpty(cCm)) {
-                        clearRetryCount = 0;
+                        clearRetryCount = 1;
                         centerPrevRaw = false;
                         feedStartMs = System.currentTimeMillis();
 
