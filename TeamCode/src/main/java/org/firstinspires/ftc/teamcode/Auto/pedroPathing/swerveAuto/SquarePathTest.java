@@ -26,13 +26,10 @@ public class SquarePathTest extends OpMode {
     private Timer pauseTimer = new Timer();
     private boolean isPausing = false;
 
-<<<<<<< HEAD
-    // Pose Definitions
     private final Pose startPose = new Pose(0, 0, Math.toRadians(0)); //120
     private final Pose corner1 = new Pose(24, 0, Math.toRadians(0)); //96
     private final Pose corner2 = new Pose(24, -24, Math.toRadians(0)); //72, 96
     private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
-=======
     // Pose Definitions (Standard FTC: X=Forward, Y=Left)
     // Start at (0,0) facing 0 radians (Forward/East)
     private final Pose startPose = new Pose(0, 0, Math.toRadians(0));
@@ -47,7 +44,7 @@ public class SquarePathTest extends OpMode {
     private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
 
     // 4. Move Left 24 inches (+Y) - Robot is back at (0, 0)
->>>>>>>
+
     private final Pose corner4 = new Pose(0, 0, Math.toRadians(0));
 
     // Store targets in array for easy access by index
