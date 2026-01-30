@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -9,17 +10,18 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
-import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.hardware.Servo;
-
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
+import java.util.Arrays;
+import java.util.List;
 
 @TeleOp(name = "HotPotatoSwerve", group = "Swerve")
 public class HotPotatoSwerve extends LinearOpMode {
@@ -29,6 +31,7 @@ public class HotPotatoSwerve extends LinearOpMode {
     private CRServo frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer;
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu;
+    private VoltageSensor voltageSensor;
 
     /* ===================== MECHANISMS ===================== */
     private DcMotor frontIntake, backIntake;
@@ -36,22 +39,11 @@ public class HotPotatoSwerve extends LinearOpMode {
 
     private Servo turretRotation1, turretRotation2;
     private Servo trigger;
-
-    // Adjuster servo
     private Servo adjuster;
 
     /* ===================== SENSORS (BALL DISTANCE) ===================== */
-    private NormalizedColorSensor frontColor, centerColor, backColor;
+    private NormalizedColorSensor frontColor, centerColor, backColor; // kept for config compatibility
     private DistanceSensor frontDist, centerDist, backDist;
-
-    /* ===================== VISION (GOAL DISTANCE) ===================== */
-    private VisionPortal visionPortal;
-    private AprilTagProcessor aprilTag;
-
-    // CenterStage goal IDs (change if yours differ)
-    private static final int TAG_BLUE_GOAL = 20;
-    private static final int TAG_RED_GOAL  = 24;
-    private int targetGoalId = TAG_RED_GOAL;
 
     /* ===================== SWERVE CONSTANTS ===================== */
     final double TRACK_WIDTH = 17.258;
@@ -71,23 +63,48 @@ public class HotPotatoSwerve extends LinearOpMode {
     final double MAX_SPEED_FAST = 0.8;
     final double MAX_SPEED_SLOW = 0.2;
 
-    /* ===================== TURRET CONTROL (GP2 RSX fast, slow with RB) ===================== */
+    /* ===================== WHEEL PLANTING (X SNAP) ===================== */
+    final int FRAMES_TO_PLANT_WHEELS = 5;
+    private int framesSinceLastMoved = 0;
+
+    /* ===================== TURRET CONTROL (GP2 RSX, slow with GP2 RB) ===================== */
     final double MIN_TURRET_ROTATION = 0.0;
     final double MAX_TURRET_ROTATION = 1.0;
     final double TURRET_DEADBAND = 0.05;
 
-    // “Fast” vs “Slow” sensitivity
-    final double TURRET_RATE_FAST = 0.020; // per loop at full stick
-    final double TURRET_RATE_SLOW = 0.006; // per loop at full stick
+    final double TURRET_RATE_FAST = 0.030;
+    final double TURRET_RATE_SLOW = 0.006;
 
     private double currentTurretRotation = 0.5;
 
-    /* ===================== ADJUSTER SERVO RANGE ===================== */
-    final double ADJUSTER_MIN = 0.0;
-    final double ADJUSTER_MAX = 0.75;
-    private double adjusterPos = ADJUSTER_MIN;
+    // GP2 A turret center
+    private boolean turretCenterPrev = false;
 
-    /* ===================== MANUAL INTAKE CONTROLS ===================== */
+    /* ===================== ADJUSTER CONTROL (GP2 LSY, slow with GP2 RB, faster than turret) ===================== */
+    final double ADJUSTER_MIN = 0.0;   // up
+    final double ADJUSTER_MAX = 0.75;  // top
+    final double ADJUSTER_DEADBAND = 0.05;
+
+    final double ADJUSTER_RATE_FAST = 0.050;
+    final double ADJUSTER_RATE_SLOW = 0.015;
+
+    private double adjusterPos = 0.0;
+
+    /* ===================== INTAKES (BASE 90%, SCALED SLOWS) ===================== */
+    final double INTAKE_BASE = 0.90;
+
+    final double INTAKE_SLOW_RATIO = 0.30;
+    final double FAST_AFTER_SLOW_RATIO = 0.70;
+    final double FAST_AFTER_SLOW_AND_CENTER_RATIO = 0.55;
+
+    final double MANUAL_FAST = INTAKE_BASE;
+    final double MANUAL_SLOW = INTAKE_BASE * INTAKE_SLOW_RATIO;
+
+    final double FAST_AFTER_SLOW = INTAKE_BASE * FAST_AFTER_SLOW_RATIO;
+    final double FAST_AFTER_SLOW_AND_CENTER = INTAKE_BASE * FAST_AFTER_SLOW_AND_CENTER_RATIO;
+
+    final double LAUNCH_INTAKE_POWER = INTAKE_BASE;
+
     private boolean isIntakeOn = false;
     private boolean intakeTogglePrev = false;
 
@@ -96,35 +113,30 @@ public class HotPotatoSwerve extends LinearOpMode {
     private boolean intakeModeOne = true;
     private boolean intakeModePrev = false;
 
-    final double MANUAL_FAST = 1.0;
-    final double MANUAL_SLOW = 0.30;
+    /* ===================== FLYWHEEL (TRIM) ===================== */
+    final double FLYWHEEL_DEFAULT_POWER = 0.75;
+    final double FLYWHEEL_POWER_STEP = 0.01;
 
-    // Smart gating powers for FAST once slow has captured
-    final double FAST_AFTER_SLOW = 0.70;
-    final double FAST_AFTER_SLOW_AND_CENTER = 0.55;
+    private double flyPower = FLYWHEEL_DEFAULT_POWER;
 
     /* ===================== TRIGGER SERVO ===================== */
-    // You: 0.0 = launched, 0.225 = down/reset
+    // Your mapping: 0.0 = launched, 0.225 = down/reset
     final double TRIGGER_FIRE = 0.0;
     final double TRIGGER_HOME = 0.225;
 
-    // Future reference
     final long TRIGGER_PULSE_MS = 250;
 
-    // We hold longer for reliability
     final long LAUNCH_TRIGGER_HOLD_MS = 400;
     final long TRIGGER_RESET_WAIT_MS = 150;
 
-    /* ===================== FLYWHEEL TIMING ===================== */
+    /* ===================== LAUNCH TIMING ===================== */
     final long FLYWHEEL_SPINUP_MS = 1000;
     final long FLYWHEEL_SPINDOWN_MS = 300;
 
-    /* ===================== LAUNCH BEHAVIOR ===================== */
-    final long FEED_TIMEOUT_MS = 1000;
-    final double LAUNCH_INTAKE_POWER = 0.76;
+    final long FEED_TIMEOUT_MS = 1250;
 
-    /* ===================== DISTANCE BALL DETECTION (INTAKE) ===================== */
-    final double FRONT_ON_CM  = 2.2, FRONT_OFF_CM  = 3.2;
+    /* ===================== DISTANCE BALL DETECTION (HYSTERESIS) ===================== */
+    final double FRONT_ON_CM  = 2.5, FRONT_OFF_CM  = 3.2;
     final double CENTER_ON_CM = 2.5, CENTER_OFF_CM = 4.0;
     final double BACK_ON_CM   = 2.5, BACK_OFF_CM   = 4.0;
 
@@ -134,23 +146,13 @@ public class HotPotatoSwerve extends LinearOpMode {
 
     private boolean centerPrevRaw = false;
 
-    /* ===================== HOTPOTATO: DISTANCE -> SETTINGS LOOKUP ===================== */
-    // Distance is from AprilTag pose range (INCHES).
-    // Fill these with real tuning data from your robot.
-    //
-    // Example structure:
-    //   distance (in):  30,  45,  60,  75,  90
-    //   fly power:     0.60,0.68,0.75,0.82,0.90
-    //   adjuster pos:  0.10,0.18,0.26,0.34,0.42
-    //
-    // Must be same length, sorted by increasing distance.
-    private static final double[] DIST_IN =   { 30, 45, 60, 75, 90 };
-    private static final double[] FLY_PWR =   { 0.60, 0.68, 0.75, 0.82, 0.90 };
-    private static final double[] ADJ_POS =   { 0.10, 0.18, 0.26, 0.34, 0.42 };
+    /* ===================== CLEAR-CENTER RETRIES (AUTO ABORT) ===================== */
+    private static final int MAX_CLEAR_RETRIES = 2;
+    private static final long CLEAR_RETRY_GAP_MS = 120;
+    private int clearRetryCount = 0;
 
-    // Current “auto” outputs (applied during launch + can be displayed anytime)
-    private double autoFlyPower = 0.75;
-    private double autoAdjusterPos = 0.20;
+    private enum ClearTarget { AFTER_1, AFTER_2, BEFORE_SPINDOWN }
+    private ClearTarget clearTarget = ClearTarget.AFTER_1;
 
     /* ===================== LAUNCH STATE MACHINE ===================== */
     private enum LaunchState {
@@ -159,14 +161,17 @@ public class HotPotatoSwerve extends LinearOpMode {
 
         FIRE_1,
         RESET_AFTER_1,
-        FEED_FOR_2,
 
+        FEED_FOR_2,
         FIRE_2,
         RESET_AFTER_2,
-        FEED_FOR_3,
 
+        FEED_FOR_3,
         FIRE_3,
         RESET_AFTER_3,
+
+        CLEAR_CENTER,
+        CLEAR_PULSE,
 
         SPINDOWN
     }
@@ -174,48 +179,148 @@ public class HotPotatoSwerve extends LinearOpMode {
     private LaunchState launchState = LaunchState.IDLE;
     private long stateTimer = 0;
     private long feedStartMs = 0;
-    private boolean intakeWasOnBeforeLaunch = false;
+
+    /* ===================== VISION (APRILTAG AUTO RANGE) ===================== */
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
+
+    private static final int TAG_BLUE_GOAL = 20;
+    private static final int TAG_RED_GOAL  = 24;
+
+    // GP2 B sets red, GP2 X sets blue
+    private boolean redGoalSelected = true;
+
+    // Auto mode rules:
+    // - starts ON
+    // - manual adjust (adjuster OR fly trim) disables auto
+    // - distance change > 10" re-enables auto
+    // - GP2 DPAD LEFT forces auto ON
+    private boolean autoMode = true;
+    private static final double AUTO_REENABLE_DELTA_IN = 10.0;
+    private double distanceAtDisableIn = Double.NaN;
+
+    // Edge-detect helpers
+    private boolean dpadLeftPrev = false;
+    private boolean bPrev = false;
+    private boolean xPrev = false;
+
+    /* ===================== SHOT TABLE ===================== */
+    private static class ShotPoint {
+        final double distIn;
+        final double fly;
+        final double adj;
+        ShotPoint(double distIn, double fly, double adj) {
+            this.distIn = distIn;
+            this.fly = fly;
+            this.adj = adj;
+        }
+    }
+
+    // Sorted by dist (low -> high). First entry is fallback for <=50 AND NaN.
+    private final List<ShotPoint> shotTable = Arrays.asList(
+            new ShotPoint(50, 0.77, 0.591),  // <=50 OR NaN fallback
+            new ShotPoint(60, 0.77, 0.685),
+            new ShotPoint(80, 0.79, 0.495),
+            new ShotPoint(98, 0.82, 0.499)
+    );
+
+    private double autoFly = FLYWHEEL_DEFAULT_POWER;
+    private double autoAdj = 0.5;
 
     @Override
     public void runOpMode() {
+
         initHardware();
         initVision();
 
+        // ===================== PRE-START LOOP (NO MOVEMENT) =====================
+        // We intentionally do NOT set any motor powers or servo positions here.
+        while (!isStarted() && !isStopRequested()) {
+
+            // Allow goal selection even before start
+            boolean bNow = gamepad2.b;
+            if (bNow && !bPrev) redGoalSelected = true;
+            bPrev = bNow;
+
+            boolean xNow = gamepad2.x;
+            if (xNow && !xPrev) redGoalSelected = false;
+            xPrev = xNow;
+
+            int targetTag = redGoalSelected ? TAG_RED_GOAL : TAG_BLUE_GOAL;
+            double tagDistIn = getRangeToTagInches(targetTag);
+
+            telemetry.addLine("INIT: No motors/servos commanded (no movement).");
+            telemetry.addData("Goal Select", redGoalSelected ? "RED(Tag24)" : "BLUE(Tag20)");
+            telemetry.addData("Target Tag", targetTag);
+            telemetry.addData("Target Dist (in)", Double.isNaN(tagDistIn) ? "NaN" : String.format("%.2f", tagDistIn));
+
+            if (aprilTag != null) {
+                List<AprilTagDetection> dets = aprilTag.getDetections();
+                telemetry.addData("Tag count", dets.size());
+                if (dets.size() == 0) {
+                    telemetry.addLine("NO APRILTAGS DETECTED");
+                } else {
+                    int lines = 0;
+                    for (AprilTagDetection det : dets) {
+                        if (det == null) continue;
+                        if (det.ftcPose != null) {
+                            telemetry.addLine(String.format(
+                                    "Tag %d | range=%.2f | bearing=%.1f | yaw=%.1f",
+                                    det.id,
+                                    det.ftcPose.range,
+                                    det.ftcPose.bearing,
+                                    det.ftcPose.yaw
+                            ));
+                        } else {
+                            telemetry.addLine("Tag " + det.id + " | NO POSE");
+                        }
+                        lines++;
+                        if (lines >= 6) break;
+                    }
+                }
+            } else {
+                telemetry.addLine("AprilTag processor NULL");
+            }
+
+            telemetry.update();
+            sleep(20);
+        }
+
+        // ===================== MATCH START: NOW WE CAN COMMAND POSITIONS =====================
+        // Set safe initial positions ONCE at start (not during init).
         trigger.setPosition(TRIGGER_HOME);
         turretRotation1.setPosition(currentTurretRotation);
         turretRotation2.setPosition(1.0 - currentTurretRotation);
         adjuster.setPosition(adjusterPos);
 
-        telemetry.addLine("HotPotatoSwerve ready");
-        telemetry.addLine("GP1: Drive (RB slow) | Launch A | Abort B | Intake toggle RT | Intake mode dpad_left");
-        telemetry.addLine("GP2: Turret RSX (FAST) + hold RB for SLOW | Goal select: dpad_left BLUE, dpad_right RED");
-        telemetry.update();
-
-        waitForStart();
+        // Ensure all motors start at zero power
+        frontIntake.setPower(0);
+        backIntake.setPower(0);
+        leftFly.setPower(0);
+        rightFly.setPower(0);
 
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
 
         while (opModeIsActive()) {
 
-            /* ===================== GOAL SELECTION (VISION TARGET) ===================== */
-            if (gamepad2.dpad_left)  targetGoalId = TAG_BLUE_GOAL;
-            if (gamepad2.dpad_right) targetGoalId = TAG_RED_GOAL;
+            /* ===================== GOAL SELECT (GP2 B/X) ===================== */
+            boolean bNow = gamepad2.b;
+            if (bNow && !bPrev) redGoalSelected = true;
+            bPrev = bNow;
 
-            /* ===================== READ GOAL DISTANCE & COMPUTE AUTO SETTINGS ===================== */
-            AprilTagDetection goalDet = getDetectionForId(targetGoalId);
-            double goalDistIn = Double.NaN;
+            boolean xNow = gamepad2.x;
+            if (xNow && !xPrev) redGoalSelected = false;
+            xPrev = xNow;
 
-            if (goalDet != null && goalDet.ftcPose != null) {
-                goalDistIn = goalDet.ftcPose.range; // inches (FTC pose convention)
-                autoFlyPower = lookupInterp(DIST_IN, FLY_PWR, goalDistIn);
-                autoAdjusterPos = lookupInterp(DIST_IN, ADJ_POS, goalDistIn);
-
-                // clamp adjuster into your physical range
-                autoAdjusterPos = clamp(autoAdjusterPos, ADJUSTER_MIN, ADJUSTER_MAX);
-                autoFlyPower = clamp(autoFlyPower, 0.0, 1.0);
+            /* ===================== FORCE AUTO ON (GP2 DPAD LEFT) ===================== */
+            boolean dpadLeftNow = gamepad2.dpad_left;
+            if (dpadLeftNow && !dpadLeftPrev) {
+                autoMode = true;
+                distanceAtDisableIn = Double.NaN;
             }
+            dpadLeftPrev = dpadLeftNow;
 
-            /* ===================== BALL DISTANCE SENSING (INTAKE SMART LOGIC) ===================== */
+            /* ===================== BALL DISTANCE SENSING ===================== */
             double fCm = safeDistanceCm(frontDist);
             double cCm = safeDistanceCm(centerDist);
             double bCm = safeDistanceCm(backDist);
@@ -228,75 +333,136 @@ public class HotPotatoSwerve extends LinearOpMode {
             boolean centerNewBall = centerRaw && !centerPrevRaw;
             centerPrevRaw = centerRaw;
 
-            /* ===================== ABORT LAUNCH ANYTIME WITH B ===================== */
-            if (gamepad1.b && launchState != LaunchState.IDLE) {
-                launchState = LaunchState.IDLE;
+            /* ===================== APRILTAG RANGE (INCHES) ===================== */
+            int targetTag = redGoalSelected ? TAG_RED_GOAL : TAG_BLUE_GOAL;
+            double tagDistIn = getRangeToTagInches(targetTag);
 
-                frontIntake.setPower(0);
-                backIntake.setPower(0);
-                leftFly.setPower(0);
-                rightFly.setPower(0);
-
-                trigger.setPosition(TRIGGER_HOME);
-
-                // Resume intake if it was on
-                isIntakeOn = intakeWasOnBeforeLaunch;
-
-                telemetry.addLine("LAUNCH ABORTED");
+            // Auto re-enable rule: if auto is OFF and distance changes > 10"
+            if (!autoMode && !Double.isNaN(tagDistIn) && !Double.isNaN(distanceAtDisableIn)) {
+                if (Math.abs(tagDistIn - distanceAtDisableIn) > AUTO_REENABLE_DELTA_IN) {
+                    autoMode = true;
+                    distanceAtDisableIn = Double.NaN;
+                }
             }
 
-            /* ===================== DRIVE (ROBOT-CENTRIC) ===================== */
+            /* ===================== MANUAL FLY TRIM (DISABLES AUTO) ===================== */
+            boolean flyManualChanged = false;
+            if (gamepad2.dpad_up) {
+                flyPower += FLYWHEEL_POWER_STEP;
+                flyManualChanged = true;
+            } else if (gamepad2.dpad_down) {
+                flyPower -= FLYWHEEL_POWER_STEP;
+                flyManualChanged = true;
+            }
+            flyPower = clamp(flyPower, 0.0, 1.0);
+
+            if (flyManualChanged) {
+                disableAutoIfNeeded(tagDistIn);
+            }
+
+            /* ===================== AUTO APPLY =====================
+               If autoMode is ON:
+               - if distance is NaN or <= 50: use the 50-row fallback
+               - if > 50: interpolate between your table points
+             */
+            if (autoMode) {
+                ShotPoint sp = interpolateShot(tagDistIn);
+                autoFly = sp.fly;
+                autoAdj = sp.adj;
+
+                flyPower = clamp(autoFly, 0.0, 1.0);
+                adjusterPos = clamp(autoAdj, ADJUSTER_MIN, ADJUSTER_MAX);
+                adjuster.setPosition(adjusterPos);
+            }
+
+            /* ===================== DRIVE SPEED MODE ===================== */
             double speedMultiplier = gamepad1.right_bumper ? MAX_SPEED_SLOW : MAX_SPEED_FAST;
 
+            /* ===================== DRIVE INPUTS (robot-centric) ===================== */
             double robotY = -gamepad1.left_stick_y * speedMultiplier;
             double robotX =  gamepad1.left_stick_x * speedMultiplier;
             double rot    =  gamepad1.right_stick_x * speedMultiplier;
-
-            if (Math.abs(robotX) < DRIVE_DEADBAND) robotX = 0;
-            if (Math.abs(robotY) < DRIVE_DEADBAND) robotY = 0;
-            if (Math.abs(rot)   < DRIVE_DEADBAND) rot = 0;
 
             double A = robotX - rot * (WHEELBASE / R);
             double B = robotX + rot * (WHEELBASE / R);
             double C = robotY - rot * (TRACK_WIDTH / R);
             double D = robotY + rot * (TRACK_WIDTH / R);
 
-            double spFL = Math.hypot(B, D);
-            double spFR = Math.hypot(B, C);
-            double spBL = Math.hypot(A, D);
-            double spBR = Math.hypot(A, C);
+            double speedFrontLeft  = Math.hypot(B, D);
+            double speedFrontRight = Math.hypot(B, C);
+            double speedBackLeft   = Math.hypot(A, D);
+            double speedBackRight  = Math.hypot(A, C);
 
-            double max = Math.max(Math.max(spFL, spFR), Math.max(spBL, spBR));
-            if (max > 1.0) { spFL/=max; spFR/=max; spBL/=max; spBR/=max; }
+            double maxSpeed = Math.max(
+                    Math.max(speedFrontLeft, speedFrontRight),
+                    Math.max(speedBackLeft, speedBackRight)
+            );
+            if (maxSpeed > 1.0) {
+                speedFrontLeft  /= maxSpeed;
+                speedFrontRight /= maxSpeed;
+                speedBackLeft   /= maxSpeed;
+                speedBackRight  /= maxSpeed;
+            }
 
+            // Steering targets
             if (Math.abs(robotX) > DRIVE_DEADBAND || Math.abs(robotY) > DRIVE_DEADBAND || Math.abs(rot) > DRIVE_DEADBAND) {
                 targetAngleFL = Math.atan2(B, D);
                 targetAngleFR = Math.atan2(B, C);
                 targetAngleBL = Math.atan2(A, D);
                 targetAngleBR = Math.atan2(A, C);
+                framesSinceLastMoved = 0;
             } else {
-                spFL = 0; spFR = 0; spBL = 0; spBR = 0;
+                speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
+                framesSinceLastMoved += 1;
             }
 
-            runModule(frontLeftDrive,  frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  spFL, targetAngleFL);
-            runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, spFR, targetAngleFR);
-            runModule(backLeftDrive,   backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   spBL, targetAngleBL);
-            runModule(backRightDrive,  backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  spBR, targetAngleBR);
+            // X formation plant
+            if (gamepad1.left_stick_button || framesSinceLastMoved >= FRAMES_TO_PLANT_WHEELS) {
+                targetAngleFL = -Math.PI / 4; targetAngleFR =  Math.PI / 4;
+                targetAngleBL =  Math.PI / 4; targetAngleBR = -Math.PI / 4;
+                speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
+            }
 
-            /* ===================== TURRET MANUAL CONTROL (GP2 RSX, FAST vs SLOW) ===================== */
+            runModule(frontLeftDrive,  frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  speedFrontLeft,  targetAngleFL);
+            runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, speedFrontRight, targetAngleFR);
+            runModule(backLeftDrive,   backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   speedBackLeft,   targetAngleBL);
+            runModule(backRightDrive,  backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  speedBackRight,  targetAngleBR);
+
+            /* ===================== TURRET CENTER (GP2 A -> 0.5) ===================== */
+            boolean centerBtn = gamepad2.a;
+            if (centerBtn && !turretCenterPrev) {
+                currentTurretRotation = 0.5;
+                turretRotation1.setPosition(currentTurretRotation);
+                turretRotation2.setPosition(1.0 - currentTurretRotation);
+            }
+            turretCenterPrev = centerBtn;
+
+            /* ===================== TURRET (GP2 RSX, slow with GP2 RB) ===================== */
             double turretInput = -gamepad2.right_stick_x;
             if (Math.abs(turretInput) < TURRET_DEADBAND) turretInput = 0;
 
             double turretRate = gamepad2.right_bumper ? TURRET_RATE_SLOW : TURRET_RATE_FAST;
-            currentTurretRotation += turretInput * turretRate;
-            currentTurretRotation = clamp(currentTurretRotation, MIN_TURRET_ROTATION, MAX_TURRET_ROTATION);
+            currentTurretRotation = clamp(currentTurretRotation + turretInput * turretRate,
+                    MIN_TURRET_ROTATION, MAX_TURRET_ROTATION);
 
             turretRotation1.setPosition(currentTurretRotation);
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-            /* ===================== MANUAL INTAKE (ONLY WHEN NOT LAUNCHING) ===================== */
-            if (launchState == LaunchState.IDLE) {
+            /* ===================== ADJUSTER (GP2 LSY manual, disables auto) ===================== */
+            double adjInput = gamepad2.left_stick_y;
+            if (Math.abs(adjInput) < ADJUSTER_DEADBAND) adjInput = 0;
 
+            if (adjInput != 0) {
+                // manual adjustment => disable auto
+                disableAutoIfNeeded(tagDistIn);
+
+                double adjRate = gamepad2.right_bumper ? ADJUSTER_RATE_SLOW : ADJUSTER_RATE_FAST;
+                adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);
+                adjuster.setPosition(adjusterPos);
+            }
+
+            /* ===================== MANUAL INTAKE (when not launching) ===================== */
+            if (launchState == LaunchState.IDLE) {
                 boolean intakeToggle = gamepad1.right_trigger > 0.5;
                 if (intakeToggle && !intakeTogglePrev) isIntakeOn = !isIntakeOn;
                 intakeTogglePrev = intakeToggle;
@@ -305,48 +471,40 @@ public class HotPotatoSwerve extends LinearOpMode {
                 if (modeToggle && !intakeModePrev) intakeModeOne = !intakeModeOne;
                 intakeModePrev = modeToggle;
 
-                if (isIntakeOn) {
-                    applySmartIntake(intakeModeOne);
-                } else {
-                    frontIntake.setPower(0);
-                    backIntake.setPower(0);
-                }
+                if (isIntakeOn) applySmartIntake();
+                else { frontIntake.setPower(0); backIntake.setPower(0); }
             }
 
-            /* ===================== LAUNCH SEQUENCE (GP1 A) ===================== */
+            /* ===================== LAUNCH START (GP1 A) ===================== */
+            if (launchState == LaunchState.IDLE && gamepad1.a) {
+                leftFly.setPower(flyPower);
+                rightFly.setPower(flyPower);
+
+                isIntakeOn = false;
+                frontIntake.setPower(0);
+                backIntake.setPower(0);
+
+                trigger.setPosition(TRIGGER_HOME);
+
+                clearRetryCount = 1;
+                stateTimer = System.currentTimeMillis();
+                launchState = LaunchState.SPINUP;
+            }
+
+            /* ===================== LAUNCH ABORT (GP1 B) ===================== */
+            if (gamepad1.b && launchState != LaunchState.IDLE) {
+                abortLaunch();
+            }
+
+            /* ===================== LAUNCH SEQUENCE ===================== */
             switch (launchState) {
 
                 case IDLE:
-                    leftFly.setPower(0);
-                    rightFly.setPower(0);
-
-                    if (gamepad1.a) {
-                        intakeWasOnBeforeLaunch = isIntakeOn;
-                        isIntakeOn = false;
-
-                        // Apply distance-based adjuster & flywheel BEFORE spinup
-                        adjusterPos = autoAdjusterPos;
-                        adjuster.setPosition(adjusterPos);
-
-                        leftFly.setPower(autoFlyPower);
-                        rightFly.setPower(autoFlyPower);
-
-                        trigger.setPosition(TRIGGER_HOME);
-
-                        stateTimer = System.currentTimeMillis();
-                        launchState = LaunchState.SPINUP;
-                    }
                     break;
 
                 case SPINUP:
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
-
-                    // Keep holding the tuned setpoints
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     trigger.setPosition(TRIGGER_HOME);
 
                     if (System.currentTimeMillis() - stateTimer >= FLYWHEEL_SPINUP_MS) {
@@ -360,10 +518,6 @@ public class HotPotatoSwerve extends LinearOpMode {
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
 
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     if (System.currentTimeMillis() - stateTimer >= LAUNCH_TRIGGER_HOLD_MS) {
                         trigger.setPosition(TRIGGER_HOME);
                         stateTimer = System.currentTimeMillis();
@@ -374,28 +528,19 @@ public class HotPotatoSwerve extends LinearOpMode {
                 case RESET_AFTER_1:
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
-
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     trigger.setPosition(TRIGGER_HOME);
 
                     if (System.currentTimeMillis() - stateTimer >= TRIGGER_RESET_WAIT_MS) {
-                        centerPrevRaw = false;
-                        feedStartMs = System.currentTimeMillis();
-                        launchState = LaunchState.FEED_FOR_2;
+                        clearTarget = ClearTarget.AFTER_1;
+                        clearRetryCount = 1;
+                        stateTimer = System.currentTimeMillis();
+                        launchState = LaunchState.CLEAR_CENTER;
                     }
                     break;
 
                 case FEED_FOR_2:
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     trigger.setPosition(TRIGGER_HOME);
 
-                    // Feed FRONT inward at 76%
                     frontIntake.setPower(+LAUNCH_INTAKE_POWER);
                     backIntake.setPower(0);
 
@@ -413,10 +558,6 @@ public class HotPotatoSwerve extends LinearOpMode {
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
 
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     if (System.currentTimeMillis() - stateTimer >= LAUNCH_TRIGGER_HOLD_MS) {
                         trigger.setPosition(TRIGGER_HOME);
                         stateTimer = System.currentTimeMillis();
@@ -427,28 +568,19 @@ public class HotPotatoSwerve extends LinearOpMode {
                 case RESET_AFTER_2:
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
-
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     trigger.setPosition(TRIGGER_HOME);
 
                     if (System.currentTimeMillis() - stateTimer >= TRIGGER_RESET_WAIT_MS) {
-                        centerPrevRaw = false;
-                        feedStartMs = System.currentTimeMillis();
-                        launchState = LaunchState.FEED_FOR_3;
+                        clearTarget = ClearTarget.AFTER_2;
+                        clearRetryCount = 1;
+                        stateTimer = System.currentTimeMillis();
+                        launchState = LaunchState.CLEAR_CENTER;
                     }
                     break;
 
                 case FEED_FOR_3:
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     trigger.setPosition(TRIGGER_HOME);
 
-                    // Feed BACK inward (your previous fix: back intake inward uses negative here)
                     backIntake.setPower(-LAUNCH_INTAKE_POWER);
                     frontIntake.setPower(0);
 
@@ -466,10 +598,6 @@ public class HotPotatoSwerve extends LinearOpMode {
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
 
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     if (System.currentTimeMillis() - stateTimer >= LAUNCH_TRIGGER_HOLD_MS) {
                         trigger.setPosition(TRIGGER_HOME);
                         stateTimer = System.currentTimeMillis();
@@ -480,80 +608,179 @@ public class HotPotatoSwerve extends LinearOpMode {
                 case RESET_AFTER_3:
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
-
-                    adjuster.setPosition(autoAdjusterPos);
-                    leftFly.setPower(autoFlyPower);
-                    rightFly.setPower(autoFlyPower);
-
                     trigger.setPosition(TRIGGER_HOME);
 
                     if (System.currentTimeMillis() - stateTimer >= TRIGGER_RESET_WAIT_MS) {
+                        clearTarget = ClearTarget.BEFORE_SPINDOWN;
+                        clearRetryCount = 1;
                         stateTimer = System.currentTimeMillis();
-                        launchState = LaunchState.SPINDOWN;
+                        launchState = LaunchState.CLEAR_CENTER;
+                    }
+                    break;
+
+                case CLEAR_CENTER:
+                    frontIntake.setPower(0);
+                    backIntake.setPower(0);
+                    trigger.setPosition(TRIGGER_HOME);
+
+                    if (isCenterEmpty(cCm)) {
+                        clearRetryCount = 1;
+                        centerPrevRaw = false;
+                        feedStartMs = System.currentTimeMillis();
+
+                        if (clearTarget == ClearTarget.AFTER_1) {
+                            launchState = LaunchState.FEED_FOR_2;
+                        } else if (clearTarget == ClearTarget.AFTER_2) {
+                            launchState = LaunchState.FEED_FOR_3;
+                        } else {
+                            stateTimer = System.currentTimeMillis();
+                            launchState = LaunchState.SPINDOWN;
+                        }
+                        break;
+                    }
+
+                    if (clearRetryCount >= MAX_CLEAR_RETRIES) {
+                        abortLaunch();
+                        break;
+                    }
+
+                    if (System.currentTimeMillis() - stateTimer >= CLEAR_RETRY_GAP_MS) {
+                        trigger.setPosition(TRIGGER_FIRE);
+                        stateTimer = System.currentTimeMillis();
+                        launchState = LaunchState.CLEAR_PULSE;
+                    }
+                    break;
+
+                case CLEAR_PULSE:
+                    frontIntake.setPower(0);
+                    backIntake.setPower(0);
+
+                    if (System.currentTimeMillis() - stateTimer >= LAUNCH_TRIGGER_HOLD_MS) {
+                        trigger.setPosition(TRIGGER_HOME);
+                        clearRetryCount++;
+
+                        stateTimer = System.currentTimeMillis();
+                        launchState = LaunchState.CLEAR_CENTER;
                     }
                     break;
 
                 case SPINDOWN:
                     frontIntake.setPower(0);
                     backIntake.setPower(0);
+                    trigger.setPosition(TRIGGER_HOME);
 
                     leftFly.setPower(0);
                     rightFly.setPower(0);
 
                     if (System.currentTimeMillis() - stateTimer >= FLYWHEEL_SPINDOWN_MS) {
-                        isIntakeOn = intakeWasOnBeforeLaunch;
                         launchState = LaunchState.IDLE;
                     }
                     break;
             }
 
             /* ===================== TELEMETRY ===================== */
-            telemetry.addData("Goal", targetGoalId == TAG_RED_GOAL ? "RED(24)" : "BLUE(20)");
-            telemetry.addData("GoalDist(in)", Double.isNaN(goalDistIn) ? "NO TAG" : String.format("%.1f", goalDistIn));
-            telemetry.addData("AutoFly", "%.3f", autoFlyPower);
-            telemetry.addData("AutoAdjuster", "%.3f", autoAdjusterPos);
+            double vbat = (voltageSensor != null) ? voltageSensor.getVoltage() : Double.NaN;
 
-            telemetry.addData("DriveMode", gamepad1.right_bumper ? "SLOW" : "FAST");
-            telemetry.addData("TurretPos", "%.3f", currentTurretRotation);
-            telemetry.addData("TurretRate", gamepad2.right_bumper ? "SLOW" : "FAST");
-            telemetry.addData("AdjusterPos(applied)", "%.3f", adjuster.getPosition());
+            telemetry.addData("VBatt", Double.isNaN(vbat) ? "?" : String.format("%.2fV", vbat));
+            telemetry.addData("Goal", redGoalSelected ? "RED(Tag24)" : "BLUE(Tag20)");
+            telemetry.addData("Target Tag", targetTag);
+            telemetry.addData("TagDist(in)", Double.isNaN(tagDistIn) ? "NaN" : String.format("%.2f", tagDistIn));
+            telemetry.addData("AutoMode", autoMode ? "ON" : "OFF");
 
-            telemetry.addData("LaunchState", launchState);
-            telemetry.addData("TriggerPos", "%.3f", trigger.getPosition());
+            String shotUsed = (Double.isNaN(tagDistIn) || tagDistIn <= 50.0) ? "FALLBACK(<=50/NaN)" : "INTERP";
+            telemetry.addData("ShotUsed", shotUsed);
 
-            telemetry.addData("BallDist F/C/B(cm)", "%.2f / %.2f / %.2f", fCm, cCm, bCm);
-            telemetry.addData("Ball F/C/B", "%s / %s / %s", frontHasBall, centerHasBall, backHasBall);
-
-            NormalizedRGBA fr = frontColor.getNormalizedColors();
-            NormalizedRGBA ce = centerColor.getNormalizedColors();
-            NormalizedRGBA ba = backColor.getNormalizedColors();
-            telemetry.addData("RGB Front",  "r=%.2f g=%.2f b=%.2f", fr.red, fr.green, fr.blue);
-            telemetry.addData("RGB Center", "r=%.2f g=%.2f b=%.2f", ce.red, ce.green, ce.blue);
-            telemetry.addData("RGB Back",   "r=%.2f g=%.2f b=%.2f", ba.red, ba.green, ba.blue);
+            telemetry.addData("FlyPower", "%.3f", flyPower);
+            telemetry.addData("Adjuster", "%.3f", adjusterPos);
+            telemetry.addData("Turret", "%.3f", currentTurretRotation);
 
             telemetry.update();
         }
+    }
 
-        if (visionPortal != null) visionPortal.close();
+    /* ===================== AUTO MODE HELPERS ===================== */
+    private void disableAutoIfNeeded(double currentDistIn) {
+        if (autoMode) {
+            autoMode = false;
+            if (!Double.isNaN(currentDistIn)) distanceAtDisableIn = currentDistIn;
+            else distanceAtDisableIn = Double.NaN;
+        }
+    }
+
+    private void initVision() {
+        aprilTag = new AprilTagProcessor.Builder()
+                .setDrawTagID(true)
+                .setDrawAxes(true)
+                .setDrawCubeProjection(true)
+                .build();
+
+        visionPortal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(WebcamName.class, "turretCam"))
+                .addProcessor(aprilTag)
+                .build();
+    }
+
+    private double getRangeToTagInches(int desiredId) {
+        if (aprilTag == null) return Double.NaN;
+
+        AprilTagDetection best = null;
+        for (AprilTagDetection det : aprilTag.getDetections()) {
+            if (det == null) continue;
+            if (det.id != desiredId) continue;
+            if (det.ftcPose == null) continue;
+
+            double r = det.ftcPose.range;
+            if (Double.isNaN(r) || Double.isInfinite(r) || r <= 0) continue;
+
+            if (best == null || r < best.ftcPose.range) best = det;
+        }
+
+        if (best == null) return Double.NaN;
+        return best.ftcPose.range;
+    }
+
+    private ShotPoint interpolateShot(double distIn) {
+        // Fallback rule: if <= 50 OR NaN -> use the <=50 row
+        ShotPoint fallback = shotTable.get(0); // assumes first is 50-row
+        if (Double.isNaN(distIn) || distIn <= fallback.distIn) {
+            return fallback;
+        }
+
+        // If above highest, clamp to highest row
+        ShotPoint hi = shotTable.get(shotTable.size() - 1);
+        if (distIn >= hi.distIn) return hi;
+
+        // Otherwise, interpolate between bounding points
+        for (int i = 0; i < shotTable.size() - 1; i++) {
+            ShotPoint a = shotTable.get(i);
+            ShotPoint b = shotTable.get(i + 1);
+
+            if (distIn >= a.distIn && distIn <= b.distIn) {
+                double t = (distIn - a.distIn) / (b.distIn - a.distIn);
+                double fly = a.fly + t * (b.fly - a.fly);
+                double adj = a.adj + t * (b.adj - a.adj);
+                return new ShotPoint(distIn, fly, adj);
+            }
+        }
+
+        // Shouldn't happen, but safe fallback
+        return fallback;
     }
 
     /* ===================== SMART INTAKE LOGIC ===================== */
-    private void applySmartIntake(boolean modeOne) {
+    private void applySmartIntake() {
 
         DcMotor fastMotor, slowMotor;
         boolean fastBall, slowBall;
-        double dir = modeOne ? +1.0 : -1.0;
 
-        if (modeOne) {
-            fastMotor = frontIntake;
-            slowMotor = backIntake;
-            fastBall = frontHasBall;
-            slowBall = backHasBall;
+        double dir = intakeModeOne ? +1.0 : -1.0;
+
+        if (intakeModeOne) {
+            fastMotor = frontIntake;  fastBall = frontHasBall;
+            slowMotor = backIntake;   slowBall = backHasBall;
         } else {
-            fastMotor = backIntake;
-            slowMotor = frontIntake;
-            fastBall = backHasBall;
-            slowBall = frontHasBall;
+            fastMotor = backIntake;   fastBall = backHasBall;
+            slowMotor = frontIntake;  slowBall = frontHasBall;
         }
 
         double slowPower = slowBall ? 0.0 : (dir * MANUAL_SLOW);
@@ -575,6 +802,22 @@ public class HotPotatoSwerve extends LinearOpMode {
         slowMotor.setPower(slowPower);
     }
 
+    /* ===================== CLEAR/ABORT HELPERS ===================== */
+    private boolean isCenterEmpty(double centerCm) {
+        return centerCm >= CENTER_OFF_CM;
+    }
+
+    private void abortLaunch() {
+        frontIntake.setPower(0);
+        backIntake.setPower(0);
+        leftFly.setPower(0);
+        rightFly.setPower(0);
+        trigger.setPosition(TRIGGER_HOME);
+
+        clearRetryCount = 0;
+        launchState = LaunchState.IDLE;
+    }
+
     /* ===================== DISTANCE HELPERS ===================== */
     private double safeDistanceCm(DistanceSensor s) {
         double cm = s.getDistance(DistanceUnit.CM);
@@ -584,32 +827,6 @@ public class HotPotatoSwerve extends LinearOpMode {
 
     private boolean hysteresisBall(boolean prev, double cm, double onCm, double offCm) {
         return prev ? (cm <= offCm) : (cm <= onCm);
-    }
-
-    /* ===================== APRILTAG HELPERS ===================== */
-    private AprilTagDetection getDetectionForId(int id) {
-        if (aprilTag == null) return null;
-        for (AprilTagDetection d : aprilTag.getDetections()) {
-            if (d != null && d.id == id) return d;
-        }
-        return null;
-    }
-
-    /* ===================== LOOKUP TABLE (LINEAR INTERP) ===================== */
-    private double lookupInterp(double[] xs, double[] ys, double x) {
-        if (xs == null || ys == null || xs.length == 0 || xs.length != ys.length) return 0.0;
-
-        if (x <= xs[0]) return ys[0];
-        if (x >= xs[xs.length - 1]) return ys[ys.length - 1];
-
-        for (int i = 0; i < xs.length - 1; i++) {
-            double x0 = xs[i], x1 = xs[i + 1];
-            if (x >= x0 && x <= x1) {
-                double t = (x - x0) / (x1 - x0);
-                return ys[i] + t * (ys[i + 1] - ys[i]);
-            }
-        }
-        return ys[ys.length - 1];
     }
 
     /* ===================== SWERVE HELPERS ===================== */
@@ -645,6 +862,12 @@ public class HotPotatoSwerve extends LinearOpMode {
         return Math.max(lo, Math.min(hi, v));
     }
 
+    private void resetMotors(DcMotor... motors) {
+        for (DcMotor m : motors) {
+            m.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        }
+    }
+
     /* ===================== HARDWARE INIT ===================== */
     private void initHardware() {
 
@@ -663,30 +886,7 @@ public class HotPotatoSwerve extends LinearOpMode {
         backLeftEncoder   = hardwareMap.get(AnalogInput.class, "backLeftEncoder");
         backRightEncoder  = hardwareMap.get(AnalogInput.class, "backRightEncoder");
 
-        frontIntake = hardwareMap.get(DcMotor.class, "frontIntake");
-        backIntake  = hardwareMap.get(DcMotor.class, "backIntake");
-
-        leftFly  = hardwareMap.get(DcMotor.class, "leftFly");
-        rightFly = hardwareMap.get(DcMotor.class, "rightFly");
-
-        turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1");
-        turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2");
-        turretRotation1.setDirection(Servo.Direction.FORWARD);
-        turretRotation2.setDirection(Servo.Direction.REVERSE);
-
-        trigger = hardwareMap.get(Servo.class, "trigger");
-        trigger.setPosition(TRIGGER_HOME);
-
-        adjuster = hardwareMap.get(Servo.class, "adjuster");
-        adjuster.setPosition(adjusterPos);
-
-        frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
-        centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
-        backColor   = hardwareMap.get(NormalizedColorSensor.class, "backColor");
-
-        frontDist  = hardwareMap.get(DistanceSensor.class, "frontColor");
-        centerDist = hardwareMap.get(DistanceSensor.class, "centerColor");
-        backDist   = hardwareMap.get(DistanceSensor.class, "backColor");
+        voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(new IMU.Parameters(
@@ -701,16 +901,35 @@ public class HotPotatoSwerve extends LinearOpMode {
         frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
 
-        // Your flywheel directions:
+        frontLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightDrive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        resetMotors(frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive);
+
+        frontIntake = hardwareMap.get(DcMotor.class, "frontIntake");
+        backIntake  = hardwareMap.get(DcMotor.class, "backIntake");
+
+        leftFly  = hardwareMap.get(DcMotor.class, "leftFly");
+        rightFly = hardwareMap.get(DcMotor.class, "rightFly");
         leftFly.setDirection(DcMotor.Direction.REVERSE);
         rightFly.setDirection(DcMotor.Direction.FORWARD);
-    }
 
-    private void initVision() {
-        aprilTag = AprilTagProcessor.easyCreateWithDefaults();
-        visionPortal = VisionPortal.easyCreateWithDefaults(
-                hardwareMap.get(WebcamName.class, "turretCam"),
-                aprilTag
-        );
+        turretRotation1 = hardwareMap.get(Servo.class, "turret_rotation_1");
+        turretRotation2 = hardwareMap.get(Servo.class, "turret_rotation_2");
+        turretRotation1.setDirection(Servo.Direction.FORWARD);
+        turretRotation2.setDirection(Servo.Direction.REVERSE);
+
+        trigger = hardwareMap.get(Servo.class, "trigger");
+        adjuster = hardwareMap.get(Servo.class, "adjuster");
+
+        frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
+        centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
+        backColor   = hardwareMap.get(NormalizedColorSensor.class, "backColor");
+
+        frontDist  = hardwareMap.get(DistanceSensor.class, "frontColor");
+        centerDist = hardwareMap.get(DistanceSensor.class, "centerColor");
+        backDist   = hardwareMap.get(DistanceSensor.class, "backColor");
     }
 }

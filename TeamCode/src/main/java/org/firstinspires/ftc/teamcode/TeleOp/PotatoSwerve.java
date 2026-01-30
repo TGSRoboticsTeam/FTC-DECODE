@@ -693,10 +693,10 @@ public class PotatoSwerve extends LinearOpMode {
         turretRotation2.setDirection(Servo.Direction.REVERSE);
 
         trigger = hardwareMap.get(Servo.class, "trigger");
-        trigger.setPosition(TRIGGER_HOME);
+        //trigger.setPosition(TRIGGER_HOME);
 
         adjuster = hardwareMap.get(Servo.class, "adjuster");
-        adjuster.setPosition(adjusterPos);
+        //adjuster.setPosition(adjusterPos);
 
         frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
         centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
