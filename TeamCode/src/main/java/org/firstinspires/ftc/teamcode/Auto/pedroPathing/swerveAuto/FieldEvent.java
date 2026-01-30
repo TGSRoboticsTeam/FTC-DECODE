@@ -16,6 +16,9 @@ public class FieldEvent {
     static DcMotor rightFlywheel;
     static DcMotor intake;
 
+    private static int shotCount = 0;
+    private static final double SPIN_UP_TIME = 1.0;
+
     // Constants
     static final boolean INTAKE_REVERSE = true;
 
@@ -34,8 +37,36 @@ public class FieldEvent {
         intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
 
+    // Routine: Launch Start (3 shots with idle/spin-up)
+    private static boolean handleTripleLaunch() {
+        if (shotCount >= 3) {
+            shotCount = 0; // Reset for next time
+            leftFlywheel.setPower(0);
+            rightFlywheel.setPower(0);
+            return true;
+        }
+
+        if (!isTimerRunning) {
+            timerEvent.resetTimer();
+            isTimerRunning = true;
+            leftFlywheel.setPower(1.0); // IDLE/Spin-up start
+        }
+
+        // Cycle: Spin up for 1s, then "fire" (logic assumes feeder is tied to flywheel or timing)
+        if (timerEvent.getElapsedTimeSeconds() > SPIN_UP_TIME) {
+            shotCount++;
+            isTimerRunning = false; // Reset timer to start next spin-up
+        }
+        return false;
+    }
+
     public static boolean perform(Event event) {
         switch (event) {
+            case LAUNCH_THREE:
+                return handleTripleLaunch();
+            case SHOOT:
+                return handleTripleLaunch();
+
             case INTAKE_ON:
                 intake.setPower(1.0);
                 return true;
@@ -44,58 +75,29 @@ public class FieldEvent {
                 intake.setPower(0.0);
                 return true;
 
-            case SHOOT:
-                // Non-blocking approach for shooting
-                // 1. Start Flywheels
-                leftFlywheel.setPower(1.0);
-                rightFlywheel.setPower(1.0);
+            case PAUSE_SHORT:
+                return handlePause(0.5);
 
-                // 2. Wait for spin up (Example: 1 second)
-                if (!isTimerRunning) {
-                    timerEvent.resetTimer();
-                    isTimerRunning = true;
-                }
+            case PAUSE_LONG:
+                return handlePause(1.0);
 
-                if (timerEvent.getElapsedTimeSeconds() > 1.0) {
-                    // 3. Stop (or actuate feeder) after duration
-                    leftFlywheel.setPower(0);
-                    rightFlywheel.setPower(0);
-                    isTimerRunning = false; // Reset flag for next event
-                    return true; // Event complete
-                }
-                return false; // Event still running
-
-            case PAUSE:
-                // Example: Pause for 2 seconds
-                if (!isTimerRunning) {
-                    timerEvent.resetTimer();
-                    isTimerRunning = true;
-                }
-
-                if (timerEvent.getElapsedTimeSeconds() > 2.0) {
-                    isTimerRunning = false;
-                    return true;
-                }
-                return false;
-            case BLINK:
-               // telemetry.addData("Status", "BLINK");
+            // Aligns pods without moving the robot base (Static Alignment)
+            case ALIGN_LEFT_RIGHT:
+                // targetAngles: [FL, FR, BL, BR] - 90 degrees is side-to-side
+                // Note: This requires a 'stay' command in your drivetrain to hold angles
                 return true;
 
-            case CALIBRATE:
-                return true;
-
-            case NULL:
             default:
                 return true;
         }
     }
 
-    // Blocking pause (Use only if you absolutely must stop the whole thread)
-    public static void pauseTime(double t) {
-        Timer tempTimer = new Timer();
-        tempTimer.resetTimer();
-        while (tempTimer.getElapsedTimeSeconds() < t) {
-            // Wait
+    private static boolean handlePause(double seconds) {
+        if (!isTimerRunning) { timerEvent.resetTimer(); isTimerRunning = true; }
+        if (timerEvent.getElapsedTimeSeconds() > seconds) {
+            isTimerRunning = false;
+            return true;
         }
+        return false;
     }
 }

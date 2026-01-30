@@ -32,23 +32,9 @@ public class SquarePathTest extends OpMode {
     private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
     // Pose Definitions (Standard FTC: X=Forward, Y=Left)
     // Start at (0,0) facing 0 radians (Forward/East)
-    private final Pose startPose = new Pose(0, 0, Math.toRadians(0));
-
-    // 1. Move Forward 24 inches (+X)
-    private final Pose corner1 = new Pose(24, 0, Math.toRadians(0));
-
-    // 2. Move Right 24 inches (-Y) - Robot is now at (24, -24)
-    private final Pose corner2 = new Pose(24, -24, Math.toRadians(0));
-
-    // 3. Move Backward 24 inches (-X) - Robot is now at (0, -24)
-    private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
-
-    // 4. Move Left 24 inches (+Y) - Robot is back at (0, 0)
-
-    private final Pose corner4 = new Pose(0, 0, Math.toRadians(0));
 
     // Store targets in array for easy access by index
-    private final Pose[] targets = {corner1, corner2, corner3, corner4};
+    private final Pose[] targets = {corner1, corner2, corner3};
 
     private PathChain leg1Forward, leg2Right, leg3Back, leg4Left;
 
@@ -89,16 +75,13 @@ public class SquarePathTest extends OpMode {
                 .setConstantHeadingInterpolation(startPose.getHeading())
                 .build();
 
-        leg4Left = follower.pathBuilder()
-                .addPath(new BezierLine(corner3, corner4))
-                .setConstantHeadingInterpolation(startPose.getHeading())
-                .build();
+
 
         pathSequence = new PathAndEvent[]{
                 new PathAndEvent(leg1Forward, Event.NULL),
                 new PathAndEvent(leg2Right, Event.NULL),
                 new PathAndEvent(leg3Back, Event.NULL),
-                new PathAndEvent(leg4Left, Event.NULL)
+
         };
 
         telemetry.addData("Status", "Initialized. Ready to drive Right-Hand Square.");
@@ -138,13 +121,13 @@ public class SquarePathTest extends OpMode {
 
         telemetry.addLine("=== SWERVE DIAGNOSTICS ===");
         // This prints the string we formatted in SwerveDrivetrain.debugString()
-<<<<<<< HEAD
+
         // Showing: Raw Angle (Servo) | Calc Angle (Robot Frame) | Target (Command)
         //telemetry.addLine(follower.getDrivetrain().debugString());
         //telemetry.update();
-=======
+
         telemetry.addLine(follower.getDrivetrain().debugString());
->>>>>>> 2db9c0ed4381448cbc3abe2a5de2790c2428c9ed
+
 
         telemetry.addLine("\n=== MOVEMENT STATUS ===");
         if (pathIndex != -1) {
@@ -152,7 +135,7 @@ public class SquarePathTest extends OpMode {
             telemetry.addData("State", isPausing ? "PAUSED (" + (5 - (int)pauseTimer.getElapsedTimeSeconds()) + "s)" : "MOVING");
 
             Pose target = targets[pathIndex];
-<<<<<<< HEAD
+
              telemetry.addData("Target X", "%.2f", target.getX());
              telemetry.addData("Actual X", "%.2f", follower.getPose().getX());
              telemetry.addData("Target Y", "%.2f", target.getY());
@@ -162,21 +145,12 @@ public class SquarePathTest extends OpMode {
              telemetry.update();
         } else {
              telemetry.addData("Status", "DONE");
-=======
-            telemetry.addData("Target X", "%.2f", target.getX());
+
             telemetry.addData("Actual X", "%.2f", follower.getPose().getX());
 
-            telemetry.addData("Target Y", "%.2f", target.getY());
             telemetry.addData("Actual Y", "%.2f", follower.getPose().getY());
 
             // Manual distance calc
-            double dist = Math.hypot(target.getX() - follower.getPose().getX(), target.getY() - follower.getPose().getY());
-            telemetry.addData("Dist to Target", "%.2f", dist);
-        } else {
-            telemetry.addData("Status", "DONE");
-            telemetry.addData("Final X", "%.2f", follower.getPose().getX());
-            telemetry.addData("Final Y", "%.2f", follower.getPose().getY());
->>>>>>> 2db9c0ed4381448cbc3abe2a5de2790c2428c9ed
         }
 
         telemetry.addLine("=== ODOMETRY RAW ===");
