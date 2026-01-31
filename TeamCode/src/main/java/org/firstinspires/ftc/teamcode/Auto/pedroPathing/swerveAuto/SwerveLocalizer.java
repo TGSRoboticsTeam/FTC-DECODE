@@ -38,11 +38,9 @@ public class SwerveLocalizer implements Localizer {
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
 
         // Use FORWARD/REVERSED based on your specific wiring
-<<<<<<< HEAD
+
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.REVERSED, GoBildaPinpointDriver.EncoderDirection.REVERSED);
-=======
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
->>>>>>> 2db9c0ed4381448cbc3abe2a5de2790c2428c9ed
+
 
         // Reset position
         odo.resetPosAndIMU();
