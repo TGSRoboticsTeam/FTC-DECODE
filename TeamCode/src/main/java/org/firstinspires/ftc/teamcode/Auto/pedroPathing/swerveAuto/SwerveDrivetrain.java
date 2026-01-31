@@ -25,6 +25,8 @@ public class SwerveDrivetrain extends Drivetrain {
     private double xVel = 0, yVel = 0;
     // Stores calculated steering angles: [FL, FR, BL, BR]
     private double[] targetAngles = new double[4];
+    private double[] lastTargetAngles = new double[]{0, 0, 0, 0};
+
 
     public SwerveDrivetrain(HardwareMap hw) {
         // Initialize Hardware
@@ -52,7 +54,7 @@ public class SwerveDrivetrain extends Drivetrain {
         blDrive.setDirection(REVERSE_LEFT_BACK ? DcMotor.Direction.REVERSE : DcMotor.Direction.FORWARD);
         brDrive.setDirection(REVERSE_RIGHT_BACK ? DcMotor.Direction.REVERSE : DcMotor.Direction.FORWARD);
 
-        setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         this.nominalVoltage = 12.0;
         this.maxPowerScaling = 0.5;
@@ -77,6 +79,9 @@ public class SwerveDrivetrain extends Drivetrain {
         // 2. Rotate to Robot-Centric (Pedro vectors are usually Field-Centric)
         combined.rotateVector(-robotHeading);
 
+
+
+
          //Division by 2 added to slow this thing down
         double x = combined.getXComponent()/2;
         double y = combined.getYComponent()/2;
@@ -91,10 +96,10 @@ public class SwerveDrivetrain extends Drivetrain {
         double D = y + rot * (TRACK_WIDTH / R);
 
         // 5. Calculate Speeds
-        double flP = Math.hypot(B, D)/2;
-        double frP = Math.hypot(B, C)/2;
-        double blP = Math.hypot(A, D)/2;
-        double brP = Math.hypot(A, C)/2;
+        double flP = Math.hypot(B, D);
+        double frP = Math.hypot(B, C);
+        double blP = Math.hypot(A, D);
+        double brP = Math.hypot(A, C);
 
         // 5.5 Normalize wheel speeds (CRITICAL)
         double max = Math.max(
@@ -109,6 +114,7 @@ public class SwerveDrivetrain extends Drivetrain {
         }
 
         // 6. Calculate Angles (Radians) and store for runDrive
+
         targetAngles[0] = Math.atan2(B, D);
         targetAngles[1] = Math.atan2(B, C);
         targetAngles[2] = Math.atan2(A, D);

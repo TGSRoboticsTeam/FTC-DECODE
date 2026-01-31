@@ -20,13 +20,13 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
         public static final boolean REVERSE_RIGHT_FRONT = false;
         public static final boolean REVERSE_LEFT_BACK = true;
         public static final boolean REVERSE_RIGHT_BACK = false;
-<<<<<<< HEAD
+
 
         public static final double FRONT_LEFT_OFFSET  = 2.74;
         public static final double FRONT_RIGHT_OFFSET = 4.63;
         public static final double BACK_LEFT_OFFSET   = 6.2;
         public static final double BACK_RIGHT_OFFSET  = 2.737;
-=======
+
 /*
         public static final double FRONT_LEFT_OFFSET  = 3.6709;
         public static final double FRONT_RIGHT_OFFSET = 4.2173;
@@ -41,14 +41,6 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
         public static  final double BACK_LEFT_OFFSET   = 225 /180*3.1415;
         public static final double BACK_RIGHT_OFFSET  = 185 /180*3.1415;
 */
-public static final double FRONT_LEFT_OFFSET  = 2.74;
-    public static final double FRONT_RIGHT_OFFSET = 4.63;
-    public static final double BACK_LEFT_OFFSET   = 6.2;
-    public static final double BACK_RIGHT_OFFSET  = 2.737;
-    //final double FRONT_LEFT_OFFSET  = 5.2417; // This value is in radians (0 to 2π)
-    //final double FRONT_RIGHT_OFFSET = 5.7881;
-    //final double BACK_LEFT_OFFSET   = 2.4143;
-    //final double BACK_RIGHT_OFFSET  = 4.8209;
 
 
     // --- Steering PID Constants ---
@@ -59,12 +51,12 @@ public static final double FRONT_LEFT_OFFSET  = 2.74;
     // --- Pinpoint Localizer Offsets (in mm) ---
         // These define where the pods are relative to the robot's center.
         // Forward Pod: Measures X movement.
-        public static final double FORWARD_POD_OFFSET_X = -84.0; // Distance forward/back from center (mm)
+        public static final double FORWARD_POD_OFFSET_X = -15.0; // Distance forward/back from center (mm)
         public static final double FORWARD_POD_OFFSET_Y = 0.0;   // Distance left/right from center (mm) - usually 0 if centered
 
         // Strafe Pod: Measures Y movement.
         public static final double STRAFE_POD_OFFSET_X = 0.0;    // Distance forward/back from center (mm)
-        public static final double STRAFE_POD_OFFSET_Y = -168.0; // Distance left/right from center (mm)
+        public static final double STRAFE_POD_OFFSET_Y = -147.0; // Distance left/right from center (mm)
 
         // --- Follower PID Constants ---
         // Start conservative. Increase P if sluggish, Decrease if oscillating.

@@ -30,7 +30,7 @@ public class SwerveEventfulAuto extends OpMode {
 
         pathSequence = new PathAndEvent[]{
                 new PathAndEvent(Colorado, Event.SHOOT),
-                new PathAndEvent(NewMexico, Event.CALIBRATE)
+                new PathAndEvent(NewMexico, Event.NULL)
         };
 
         telemetry.addData("Status", "Initialized");

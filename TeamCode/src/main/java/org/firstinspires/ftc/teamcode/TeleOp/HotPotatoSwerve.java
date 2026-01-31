@@ -13,10 +13,18 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
-@TeleOp(name = "PotatoSwerve", group = "Swerve")
-public class PotatoSwerve extends LinearOpMode {
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
+import java.util.Arrays;
+import java.util.List;
+
+@TeleOp(name = "HotPotatoSwerve", group = "Swerve")
+public class HotPotatoSwerve extends LinearOpMode {
 
     /* ===================== DRIVE HARDWARE ===================== */
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -69,7 +77,7 @@ public class PotatoSwerve extends LinearOpMode {
 
     private double currentTurretRotation = 0.5;
 
-    // ✅ NEW: edge-detect for GP2 A turret center
+    // GP2 A turret center
     private boolean turretCenterPrev = false;
 
     /* ===================== ADJUSTER CONTROL (GP2 LSY, slow with GP2 RB, faster than turret) ===================== */
@@ -105,11 +113,8 @@ public class PotatoSwerve extends LinearOpMode {
     private boolean intakeModeOne = true;
     private boolean intakeModePrev = false;
 
-    /* ===================== FLYWHEEL (TOGGLE + TRIM) ===================== */
-    private boolean flywheelOn = false;
-    private boolean flyTogglePrev = false;
-
-    final double FLYWHEEL_DEFAULT_POWER = 1;
+    /* ===================== FLYWHEEL (TRIM) ===================== */
+    final double FLYWHEEL_DEFAULT_POWER = 0.75;
     final double FLYWHEEL_POWER_STEP = 0.01;
 
     private double flyPower = FLYWHEEL_DEFAULT_POWER;
@@ -175,32 +180,145 @@ public class PotatoSwerve extends LinearOpMode {
     private long stateTimer = 0;
     private long feedStartMs = 0;
 
+    /* ===================== VISION (APRILTAG AUTO RANGE) ===================== */
+    private VisionPortal visionPortal;
+    private AprilTagProcessor aprilTag;
+
+    private static final int TAG_BLUE_GOAL = 20;
+    private static final int TAG_RED_GOAL  = 24;
+
+    // GP2 B sets red, GP2 X sets blue
+    private boolean redGoalSelected = true;
+
+    // Auto mode rules:
+    // - starts ON
+    // - manual adjust (adjuster OR fly trim) disables auto
+    // - distance change > 10" re-enables auto
+    // - GP2 DPAD LEFT forces auto ON
+    private boolean autoMode = true;
+    private static final double AUTO_REENABLE_DELTA_IN = 10.0;
+    private double distanceAtDisableIn = Double.NaN;
+
+    // Edge-detect helpers
+    private boolean dpadLeftPrev = false;
+    private boolean bPrev = false;
+    private boolean xPrev = false;
+
+    /* ===================== SHOT TABLE ===================== */
+    private static class ShotPoint {
+        final double distIn;
+        final double fly;
+        final double adj;
+        ShotPoint(double distIn, double fly, double adj) {
+            this.distIn = distIn;
+            this.fly = fly;
+            this.adj = adj;
+        }
+    }
+
+    // Sorted by dist (low -> high). First entry is fallback for <=50 AND NaN.
+    private final List<ShotPoint> shotTable = Arrays.asList(
+            new ShotPoint(50, 0.77, 0.591),  // <=50 OR NaN fallback
+            new ShotPoint(60, 0.77, 0.685),
+            new ShotPoint(80, 0.79, 0.495),
+            new ShotPoint(98, 0.82, 0.499)
+    );
+
+    private double autoFly = FLYWHEEL_DEFAULT_POWER;
+    private double autoAdj = 0.5;
+
     @Override
     public void runOpMode() {
 
         initHardware();
+        initVision();
 
+        // ===================== PRE-START LOOP (NO MOVEMENT) =====================
+        // We intentionally do NOT set any motor powers or servo positions here.
+        while (!isStarted() && !isStopRequested()) {
+
+            // Allow goal selection even before start
+            boolean bNow = gamepad2.b;
+            if (bNow && !bPrev) redGoalSelected = true;
+            bPrev = bNow;
+
+            boolean xNow = gamepad2.x;
+            if (xNow && !xPrev) redGoalSelected = false;
+            xPrev = xNow;
+
+            int targetTag = redGoalSelected ? TAG_RED_GOAL : TAG_BLUE_GOAL;
+            double tagDistIn = getRangeToTagInches(targetTag);
+
+            telemetry.addLine("INIT: No motors/servos commanded (no movement).");
+            telemetry.addData("Goal Select", redGoalSelected ? "RED(Tag24)" : "BLUE(Tag20)");
+            telemetry.addData("Target Tag", targetTag);
+            telemetry.addData("Target Dist (in)", Double.isNaN(tagDistIn) ? "NaN" : String.format("%.2f", tagDistIn));
+
+            if (aprilTag != null) {
+                List<AprilTagDetection> dets = aprilTag.getDetections();
+                telemetry.addData("Tag count", dets.size());
+                if (dets.size() == 0) {
+                    telemetry.addLine("NO APRILTAGS DETECTED");
+                } else {
+                    int lines = 0;
+                    for (AprilTagDetection det : dets) {
+                        if (det == null) continue;
+                        if (det.ftcPose != null) {
+                            telemetry.addLine(String.format(
+                                    "Tag %d | range=%.2f | bearing=%.1f | yaw=%.1f",
+                                    det.id,
+                                    det.ftcPose.range,
+                                    det.ftcPose.bearing,
+                                    det.ftcPose.yaw
+                            ));
+                        } else {
+                            telemetry.addLine("Tag " + det.id + " | NO POSE");
+                        }
+                        lines++;
+                        if (lines >= 6) break;
+                    }
+                }
+            } else {
+                telemetry.addLine("AprilTag processor NULL");
+            }
+
+            telemetry.update();
+            sleep(20);
+        }
+
+        // ===================== MATCH START: NOW WE CAN COMMAND POSITIONS =====================
+        // Set safe initial positions ONCE at start (not during init).
         trigger.setPosition(TRIGGER_HOME);
         turretRotation1.setPosition(currentTurretRotation);
         turretRotation2.setPosition(1.0 - currentTurretRotation);
         adjuster.setPosition(adjusterPos);
 
-        waitForStart();
+        // Ensure all motors start at zero power
+        frontIntake.setPower(0);
+        backIntake.setPower(0);
+        leftFly.setPower(0);
+        rightFly.setPower(0);
 
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
 
         while (opModeIsActive()) {
 
-            /* ===================== FLYWHEEL POWER TRIM (GP2 DPAD) ===================== */
-            if (gamepad2.dpad_up) {
-                flyPower += FLYWHEEL_POWER_STEP;
-            } else if (gamepad2.dpad_down) {
-                flyPower -= FLYWHEEL_POWER_STEP;
+            /* ===================== GOAL SELECT (GP2 B/X) ===================== */
+            boolean bNow = gamepad2.b;
+            if (bNow && !bPrev) redGoalSelected = true;
+            bPrev = bNow;
+
+            boolean xNow = gamepad2.x;
+            if (xNow && !xPrev) redGoalSelected = false;
+            xPrev = xNow;
+
+            /* ===================== FORCE AUTO ON (GP2 DPAD LEFT) ===================== */
+            boolean dpadLeftNow = gamepad2.dpad_left;
+            if (dpadLeftNow && !dpadLeftPrev) {
+                autoMode = true;
+                distanceAtDisableIn = Double.NaN;
             }
-            if (gamepad2.b) {
-                flyPower = FLYWHEEL_DEFAULT_POWER;
-            }
-            flyPower = clamp(flyPower, 0.0, 1.0);
+            dpadLeftPrev = dpadLeftNow;
 
             /* ===================== BALL DISTANCE SENSING ===================== */
             double fCm = safeDistanceCm(frontDist);
@@ -214,6 +332,48 @@ public class PotatoSwerve extends LinearOpMode {
             boolean centerRaw = (cCm <= CENTER_ON_CM);
             boolean centerNewBall = centerRaw && !centerPrevRaw;
             centerPrevRaw = centerRaw;
+
+            /* ===================== APRILTAG RANGE (INCHES) ===================== */
+            int targetTag = redGoalSelected ? TAG_RED_GOAL : TAG_BLUE_GOAL;
+            double tagDistIn = getRangeToTagInches(targetTag);
+
+            // Auto re-enable rule: if auto is OFF and distance changes > 10"
+            if (!autoMode && !Double.isNaN(tagDistIn) && !Double.isNaN(distanceAtDisableIn)) {
+                if (Math.abs(tagDistIn - distanceAtDisableIn) > AUTO_REENABLE_DELTA_IN) {
+                    autoMode = true;
+                    distanceAtDisableIn = Double.NaN;
+                }
+            }
+
+            /* ===================== MANUAL FLY TRIM (DISABLES AUTO) ===================== */
+            boolean flyManualChanged = false;
+            if (gamepad2.dpad_up) {
+                flyPower += FLYWHEEL_POWER_STEP;
+                flyManualChanged = true;
+            } else if (gamepad2.dpad_down) {
+                flyPower -= FLYWHEEL_POWER_STEP;
+                flyManualChanged = true;
+            }
+            flyPower = clamp(flyPower, 0.0, 1.0);
+
+            if (flyManualChanged) {
+                disableAutoIfNeeded(tagDistIn);
+            }
+
+            /* ===================== AUTO APPLY =====================
+               If autoMode is ON:
+               - if distance is NaN or <= 50: use the 50-row fallback
+               - if > 50: interpolate between your table points
+             */
+            if (autoMode) {
+                ShotPoint sp = interpolateShot(tagDistIn);
+                autoFly = sp.fly;
+                autoAdj = sp.adj;
+
+                flyPower = clamp(autoFly, 0.0, 1.0);
+                adjusterPos = clamp(autoAdj, ADJUSTER_MIN, ADJUSTER_MAX);
+                adjuster.setPosition(adjusterPos);
+            }
 
             /* ===================== DRIVE SPEED MODE ===================== */
             double speedMultiplier = gamepad1.right_bumper ? MAX_SPEED_SLOW : MAX_SPEED_FAST;
@@ -288,13 +448,18 @@ public class PotatoSwerve extends LinearOpMode {
             turretRotation1.setPosition(currentTurretRotation);
             turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-            /* ===================== ADJUSTER (GP2 LSY, slow with GP2 RB) ===================== */
+            /* ===================== ADJUSTER (GP2 LSY manual, disables auto) ===================== */
             double adjInput = gamepad2.left_stick_y;
             if (Math.abs(adjInput) < ADJUSTER_DEADBAND) adjInput = 0;
 
-            double adjRate = gamepad2.right_bumper ? ADJUSTER_RATE_SLOW : ADJUSTER_RATE_FAST;
-            adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);
-            adjuster.setPosition(adjusterPos);
+            if (adjInput != 0) {
+                // manual adjustment => disable auto
+                disableAutoIfNeeded(tagDistIn);
+
+                double adjRate = gamepad2.right_bumper ? ADJUSTER_RATE_SLOW : ADJUSTER_RATE_FAST;
+                adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);
+                adjuster.setPosition(adjusterPos);
+            }
 
             /* ===================== MANUAL INTAKE (when not launching) ===================== */
             if (launchState == LaunchState.IDLE) {
@@ -309,21 +474,6 @@ public class PotatoSwerve extends LinearOpMode {
                 if (isIntakeOn) applySmartIntake();
                 else { frontIntake.setPower(0); backIntake.setPower(0); }
             }
-
-            /* ===================== FLYWHEEL TOGGLE (GP1 LT) ===================== */
-           /* boolean flyToggle = gamepad1.left_trigger > 0.5;
-            if (flyToggle && !flyTogglePrev) flywheelOn = !flywheelOn;
-            flyTogglePrev = flyToggle;
-
-            if (launchState == LaunchState.IDLE) {
-                if (flywheelOn) {
-                    leftFly.setPower(flyPower);
-                    rightFly.setPower(flyPower);
-                } else {
-                    leftFly.setPower(0);
-                    rightFly.setPower(0);
-                }
-            }*/
 
             /* ===================== LAUNCH START (GP1 A) ===================== */
             if (launchState == LaunchState.IDLE && gamepad1.a) {
@@ -528,14 +678,93 @@ public class PotatoSwerve extends LinearOpMode {
                     break;
             }
 
-            /* ===================== TELEMETRY (includes fly trim + voltage) ===================== */
+            /* ===================== TELEMETRY ===================== */
             double vbat = (voltageSensor != null) ? voltageSensor.getVoltage() : Double.NaN;
-            telemetry.addData("FlyPower", "%.3f", flyPower);
+
             telemetry.addData("VBatt", Double.isNaN(vbat) ? "?" : String.format("%.2fV", vbat));
-            telemetry.addData("Turret", "%.3f", currentTurretRotation);
+            telemetry.addData("Goal", redGoalSelected ? "RED(Tag24)" : "BLUE(Tag20)");
+            telemetry.addData("Target Tag", targetTag);
+            telemetry.addData("TagDist(in)", Double.isNaN(tagDistIn) ? "NaN" : String.format("%.2f", tagDistIn));
+            telemetry.addData("AutoMode", autoMode ? "ON" : "OFF");
+
+            String shotUsed = (Double.isNaN(tagDistIn) || tagDistIn <= 50.0) ? "FALLBACK(<=50/NaN)" : "INTERP";
+            telemetry.addData("ShotUsed", shotUsed);
+
+            telemetry.addData("FlyPower", "%.3f", flyPower);
             telemetry.addData("Adjuster", "%.3f", adjusterPos);
+            telemetry.addData("Turret", "%.3f", currentTurretRotation);
+
             telemetry.update();
         }
+    }
+
+    /* ===================== AUTO MODE HELPERS ===================== */
+    private void disableAutoIfNeeded(double currentDistIn) {
+        if (autoMode) {
+            autoMode = false;
+            if (!Double.isNaN(currentDistIn)) distanceAtDisableIn = currentDistIn;
+            else distanceAtDisableIn = Double.NaN;
+        }
+    }
+
+    private void initVision() {
+        aprilTag = new AprilTagProcessor.Builder()
+                .setDrawTagID(true)
+                .setDrawAxes(true)
+                .setDrawCubeProjection(true)
+                .build();
+
+        visionPortal = new VisionPortal.Builder()
+                .setCamera(hardwareMap.get(WebcamName.class, "turretCam"))
+                .addProcessor(aprilTag)
+                .build();
+    }
+
+    private double getRangeToTagInches(int desiredId) {
+        if (aprilTag == null) return Double.NaN;
+
+        AprilTagDetection best = null;
+        for (AprilTagDetection det : aprilTag.getDetections()) {
+            if (det == null) continue;
+            if (det.id != desiredId) continue;
+            if (det.ftcPose == null) continue;
+
+            double r = det.ftcPose.range;
+            if (Double.isNaN(r) || Double.isInfinite(r) || r <= 0) continue;
+
+            if (best == null || r < best.ftcPose.range) best = det;
+        }
+
+        if (best == null) return Double.NaN;
+        return best.ftcPose.range;
+    }
+
+    private ShotPoint interpolateShot(double distIn) {
+        // Fallback rule: if <= 50 OR NaN -> use the <=50 row
+        ShotPoint fallback = shotTable.get(0); // assumes first is 50-row
+        if (Double.isNaN(distIn) || distIn <= fallback.distIn) {
+            return fallback;
+        }
+
+        // If above highest, clamp to highest row
+        ShotPoint hi = shotTable.get(shotTable.size() - 1);
+        if (distIn >= hi.distIn) return hi;
+
+        // Otherwise, interpolate between bounding points
+        for (int i = 0; i < shotTable.size() - 1; i++) {
+            ShotPoint a = shotTable.get(i);
+            ShotPoint b = shotTable.get(i + 1);
+
+            if (distIn >= a.distIn && distIn <= b.distIn) {
+                double t = (distIn - a.distIn) / (b.distIn - a.distIn);
+                double fly = a.fly + t * (b.fly - a.fly);
+                double adj = a.adj + t * (b.adj - a.adj);
+                return new ShotPoint(distIn, fly, adj);
+            }
+        }
+
+        // Shouldn't happen, but safe fallback
+        return fallback;
     }
 
     /* ===================== SMART INTAKE LOGIC ===================== */
@@ -693,10 +922,7 @@ public class PotatoSwerve extends LinearOpMode {
         turretRotation2.setDirection(Servo.Direction.REVERSE);
 
         trigger = hardwareMap.get(Servo.class, "trigger");
-        //trigger.setPosition(TRIGGER_HOME);
-
         adjuster = hardwareMap.get(Servo.class, "adjuster");
-        //adjuster.setPosition(adjusterPos);
 
         frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
         centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
