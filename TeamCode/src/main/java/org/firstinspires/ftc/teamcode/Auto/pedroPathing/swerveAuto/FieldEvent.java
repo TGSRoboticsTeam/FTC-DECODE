@@ -14,17 +14,20 @@ public class FieldEvent {
     private static HardwareMap hardwareMap;
     static DcMotor leftFlywheel;
     static DcMotor rightFlywheel;
-    static DcMotor intake;
+    static DcMotor frontIntake;
+    static DcMotor backIntake;
 
     private static int shotCount = 0;
     private static final double SPIN_UP_TIME = 1.0;
 
+    // New variables to track the 3-shot cycle
+    private static int shotCounter = 0;
+    private static Timer timerEvent = new Timer();
+    private static boolean isTimerRunning = false;
+
     // Constants
     static final boolean INTAKE_REVERSE = true;
 
-    // Timing Logic
-    private static Timer timerEvent = new Timer(); // Initialize here
-    private static boolean isTimerRunning = false; // Flag to track if we started the timer for an event
 
     public static void initialize(HardwareMap hwMap) {
         hardwareMap = hwMap;
@@ -32,68 +35,87 @@ public class FieldEvent {
         rightFlywheel = hardwareMap.get(DcMotor.class, "rightFly");
 
         // Intake
-        intake = hardwareMap.get(DcMotor.class, "intake");
-        intake.setDirection(INTAKE_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
-        intake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontIntake = hardwareMap.get(DcMotor.class, "frontIntake");
+        frontIntake.setDirection(INTAKE_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+        frontIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        backIntake = hardwareMap.get(DcMotor.class, "backIntake");
+        backIntake.setDirection(INTAKE_REVERSE ? DcMotorSimple.Direction.REVERSE : DcMotorSimple.Direction.FORWARD);
+        backIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
-
-    // Routine: Launch Start (3 shots with idle/spin-up)
-    private static boolean handleTripleLaunch() {
-        if (shotCount >= 3) {
-            shotCount = 0; // Reset for next time
-            leftFlywheel.setPower(0);
-            rightFlywheel.setPower(0);
-            return true;
-        }
-
-        if (!isTimerRunning) {
-            timerEvent.resetTimer();
-            isTimerRunning = true;
-            leftFlywheel.setPower(1.0); // IDLE/Spin-up start
-        }
-
-        // Cycle: Spin up for 1s, then "fire" (logic assumes feeder is tied to flywheel or timing)
-        if (timerEvent.getElapsedTimeSeconds() > SPIN_UP_TIME) {
-            shotCount++;
-            isTimerRunning = false; // Reset timer to start next spin-up
-        }
-        return false;
-    }
-
     public static boolean perform(Event event) {
         switch (event) {
-            case LAUNCH_THREE:
-                return handleTripleLaunch();
-            case SHOOT:
+            case LAUNCH_START_THREE:
                 return handleTripleLaunch();
 
             case INTAKE_ON:
-                intake.setPower(1.0);
+                frontIntake.setPower(1.0);
+                backIntake.setPower(1.0);
                 return true;
 
             case INTAKE_OFF:
-                intake.setPower(0.0);
+                frontIntake.setPower(0.0);
+                backIntake.setPower(0.0);
                 return true;
 
-            case PAUSE_SHORT:
-                return handlePause(0.5);
-
-            case PAUSE_LONG:
-                return handlePause(1.0);
-
-            // Aligns pods without moving the robot base (Static Alignment)
             case ALIGN_LEFT_RIGHT:
-                // targetAngles: [FL, FR, BL, BR] - 90 degrees is side-to-side
-                // Note: This requires a 'stay' command in your drivetrain to hold angles
+                // Routine to rotate pods 90 degrees without driving
                 return true;
+
+            case ALIGN_FORWARD_BACK:
+                // Routine to rotate pods 0 degrees without driving
+                return true;
+
+            case ALIGN_DIAGONAL:
+                // Routine to rotate pods 45 degrees without driving
+                return true;
+
+            case PAUSE_1SEC:
+                return handleWait(1.0);
+
+            case PAUSE_05SEC:
+                return handleWait(0.5);
 
             default:
                 return true;
         }
     }
 
-    private static boolean handlePause(double seconds) {
-        if (!isTimerRunning) { timerEvent.resetTimer(); isTimerRunning = true; }
+    /**
+     * Logic: Turns on flywheels, waits for spin-up, increments count,
+     * and repeats until 3 shots are "fired."
+     */
+    private static boolean handleTripleLaunch() {
+        if (shotCounter >= 3) {
+            shotCounter = 0; // Reset for the next time we need to fire
+            leftFlywheel.setPower(0);
+            rightFlywheel.setPower(0);
+            return true; // Tells ComplexPathAuto to move to the next step
+        }
+
+        // Start flywheels
+        leftFlywheel.setPower(1.0);
+        rightFlywheel.setPower(1.0);
+
+        if (!isTimerRunning) {
+            timerEvent.resetTimer();
+            isTimerRunning = true;
+        }
+
+        // Wait 1.5 seconds per "shot" to simulate spin-up and firing
+        if (timerEvent.getElapsedTimeSeconds() > 1.5) {
+            shotCounter++;
+            isTimerRunning = false; // Reset timer for the next shot in the cycle
+        }
+
+        return false; // Tells ComplexPathAuto we are still busy firing
+    }
+
+    private static boolean handleWait(double seconds) {
+        if (!isTimerRunning) {
+            timerEvent.resetTimer();
+            isTimerRunning = true;
+        }
         if (timerEvent.getElapsedTimeSeconds() > seconds) {
             isTimerRunning = false;
             return true;
