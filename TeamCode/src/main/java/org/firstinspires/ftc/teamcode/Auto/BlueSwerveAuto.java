@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.Auto;
 
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -17,6 +18,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 // import org.firstinspires.ftc.teamcode.Auto.pedroPathing.Constants;
 
 @Autonomous(name = "BlueSwerveAuto", group = "Swerve_Auto")
+@Disabled
 public class BlueSwerveAuto extends LinearOpMode {
 
     // --- 1. HARDWARE DECLARATIONS (Copied from TeleOp) ---

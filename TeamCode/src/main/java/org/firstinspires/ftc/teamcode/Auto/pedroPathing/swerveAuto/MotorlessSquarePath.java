@@ -6,6 +6,7 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveConstants;
@@ -24,6 +25,7 @@ import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveDrivetr
  * - Verify the code switches to the next leg when you reach the target.
  */
 @Autonomous(name = "Motorless Square Path Test", group = "Test")
+@Disabled
 public class MotorlessSquarePath extends OpMode {
 
     private Follower follower;

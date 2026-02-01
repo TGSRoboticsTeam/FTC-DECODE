@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -24,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @TeleOp(name = "HotPotatoSwerve", group = "Swerve")
+@Disabled
 public class HotPotatoSwerve extends LinearOpMode {
 
     /* ===================== DRIVE HARDWARE ===================== */
@@ -103,7 +105,9 @@ public class HotPotatoSwerve extends LinearOpMode {
     final double FAST_AFTER_SLOW = INTAKE_BASE * FAST_AFTER_SLOW_RATIO;
     final double FAST_AFTER_SLOW_AND_CENTER = INTAKE_BASE * FAST_AFTER_SLOW_AND_CENTER_RATIO;
 
-    final double LAUNCH_INTAKE_POWER = INTAKE_BASE;
+    //final double LAUNCH_INTAKE_POWER = INTAKE_BASE;
+    final double LAUNCH_INTAKE_POWER = .75;
+
 
     private boolean isIntakeOn = false;
     private boolean intakeTogglePrev = false;

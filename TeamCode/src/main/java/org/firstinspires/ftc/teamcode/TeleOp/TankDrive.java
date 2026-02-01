@@ -15,8 +15,8 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
-@TeleOp(name = "PotatoSwerve", group = "Swerve")
-public class PotatoSwerve extends LinearOpMode {
+@TeleOp(name = "Tank", group = "Swerve")
+public class TankDrive extends LinearOpMode {
 
     /* ===================== DRIVE HARDWARE ===================== */
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -217,58 +217,24 @@ public class PotatoSwerve extends LinearOpMode {
             boolean centerNewBall = centerRaw && !centerPrevRaw;
             centerPrevRaw = centerRaw;
 
-            /* ===================== DRIVE SPEED MODE ===================== */
-            double speedMultiplier = gamepad1.right_bumper ? MAX_SPEED_SLOW : MAX_SPEED_FAST;
-
             /* ===================== DRIVE INPUTS (robot-centric) ===================== */
-            double robotY = -gamepad1.left_stick_y * speedMultiplier;
-            double robotX =  gamepad1.left_stick_x * speedMultiplier;
-            double rot    =  gamepad1.right_stick_x * speedMultiplier;
 
-            double A = robotX - rot * (WHEELBASE / R);
-            double B = robotX + rot * (WHEELBASE / R);
-            double C = robotY - rot * (TRACK_WIDTH / R);
-            double D = robotY + rot * (TRACK_WIDTH / R);
+            double rightTreads = -gamepad1.right_stick_y;
+            double leftTreads = -gamepad1.left_stick_y;
 
-            double speedFrontLeft  = Math.hypot(B, D);
-            double speedFrontRight = Math.hypot(B, C);
-            double speedBackLeft   = Math.hypot(A, D);
-            double speedBackRight  = Math.hypot(A, C);
+            frontRightDrive.setPower(rightTreads);
+            backRightDrive.setPower(rightTreads);
+            frontLeftDrive.setPower(leftTreads);
+            backLeftDrive.setPower(leftTreads);
 
-            double maxSpeed = Math.max(
-                    Math.max(speedFrontLeft, speedFrontRight),
-                    Math.max(speedBackLeft, speedBackRight)
-            );
-            if (maxSpeed > 1.0) {
-                speedFrontLeft  /= maxSpeed;
-                speedFrontRight /= maxSpeed;
-                speedBackLeft   /= maxSpeed;
-                speedBackRight  /= maxSpeed;
-            }
 
-            // Steering targets
-            if (Math.abs(robotX) > DRIVE_DEADBAND || Math.abs(robotY) > DRIVE_DEADBAND || Math.abs(rot) > DRIVE_DEADBAND) {
-                targetAngleFL = Math.atan2(B, D);
-                targetAngleFR = Math.atan2(B, C);
-                targetAngleBL = Math.atan2(A, D);
-                targetAngleBR = Math.atan2(A, C);
-                framesSinceLastMoved = 0;
-            } else {
-                speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
-                framesSinceLastMoved += 1;
-            }
 
-            // X formation plant
-            if (gamepad1.left_stick_button || framesSinceLastMoved >= FRAMES_TO_PLANT_WHEELS) {
-                targetAngleFL = -Math.PI / 4; targetAngleFR =  Math.PI / 4;
-                targetAngleBL =  Math.PI / 4; targetAngleBR = -Math.PI / 4;
-                speedFrontLeft = 0; speedFrontRight = 0; speedBackLeft = 0; speedBackRight = 0;
-            }
-
-            runModule(frontLeftDrive,  frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  speedFrontLeft,  targetAngleFL);
+            /*runModule(frontLeftDrive,  frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  speedFrontLeft,  targetAngleFL);
             runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, speedFrontRight, targetAngleFR);
             runModule(backLeftDrive,   backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   speedBackLeft,   targetAngleBL);
             runModule(backRightDrive,  backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  speedBackRight,  targetAngleBR);
+
+             */
 
             /* ===================== TURRET CENTER (GP2 A -> 0.5) ===================== */
             boolean centerBtn = gamepad2.a;

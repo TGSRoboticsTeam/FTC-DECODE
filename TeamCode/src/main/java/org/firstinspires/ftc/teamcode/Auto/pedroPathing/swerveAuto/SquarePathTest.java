@@ -7,6 +7,7 @@ import com.pedropathing.paths.PathChain;
 import com.pedropathing.paths.PathConstraints;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveConstants;
@@ -17,6 +18,7 @@ import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveDrivetr
  * Drives a Right-Hand Square: Forward -> Right -> Backward -> Left -> Start.
  */
 @Autonomous(name = "Square Path Test (X=Forward)", group = "Test")
+@Disabled
 public class SquarePathTest extends OpMode {
 
     private Follower follower;

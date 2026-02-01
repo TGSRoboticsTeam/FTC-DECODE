@@ -8,12 +8,10 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
-@Autonomous(name = "Simplified Close Red", group = "Swerve")
-public class ComplexPathAuto extends LinearOpMode {
+@Autonomous(name = "Simplified FAR Red", group = "Swerve")
+public class FarGoal extends LinearOpMode {
 
     // --- Hardware ---
     private DcMotor flDrive, frDrive, blDrive, brDrive;
@@ -27,8 +25,16 @@ public class ComplexPathAuto extends LinearOpMode {
     // --- Swerve Constants ---
     private final double FL_OFFSET = 2.74, FR_OFFSET = 4.63, BL_OFFSET = 6.2, BR_OFFSET = 2.737;
     private final double STEER_KP = 0.6;
+
+    /* ===================== TRIGGER SERVO ===================== */
+    // Your mapping: 0.0 = launched, 0.225 = down/reset
     final double TRIGGER_FIRE = 0.0;
     final double TRIGGER_HOME = 0.225;
+
+    final long TRIGGER_PULSE_MS = 250;
+
+    final long LAUNCH_TRIGGER_HOLD_MS = 400;
+    final long TRIGGER_RESET_WAIT_MS = 150;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -38,34 +44,28 @@ public class ComplexPathAuto extends LinearOpMode {
         telemetry.update();
 
         waitForStart();
+        sleep(10000);
 
         // 1. Launch Start: Firing 3 times
-        adjuster.setPosition(.433);
-        turnOnFlys(0.69);
-        setDrive(-0.4, -0.4, 0.4, -0.4);
-        sleep(500);
-        setDrive(-0.0, -0.0, 0.0, -0.0);
+        adjuster.setPosition(.118);
+        turnOnFlys(0.78);
 
+        //turnAllPods(1.5); 45 degrees in some direction
 
+        sleep(1000);
         fireOne();
-        frontIntake.setPower(1);
+        frontIntake.setPower(0.75);
         sleep(1200);
         frontIntake.setPower(0);
         fireOne();
-        backIntake.setPower(-1);
+        backIntake.setPower(-0.75);
         sleep(1200);
         backIntake.setPower(0);
         fireOne();
 
-
-
-        sleep(1000);
-
         turnOnFlys(0);
-        rotateAllPodsRelative(Math.toRadians(45));
-        sleep(500);
-        setDrive(-0.4, 0.4, -0.4, 0.4);
-        sleep(2500);
+        setDrive(0.4, 0.4, -0.4, -0.4);
+        sleep(1500);
         setDrive(0.0, 0.0, 0.0, 0.0);
         sleep(25000);
 
@@ -170,43 +170,6 @@ public class ComplexPathAuto extends LinearOpMode {
             updateOdoTelemetry();
         }
         stopDrivetrain();
-    }
-    //rotate
-    // Helper to rotate relative to current position (e.g., rotateRelative(Math.toRadians(45)))
-    public void rotateAllPodsRelative(double deltaRadians) {
-        // 1. Get current positions for each pod
-        double flTarget = getCurrentAngle(flEnc, FL_OFFSET) + deltaRadians;
-        double frTarget = getCurrentAngle(frEnc, FR_OFFSET) + deltaRadians;
-        double blTarget = getCurrentAngle(blEnc, BL_OFFSET) + deltaRadians;
-        double brTarget = getCurrentAngle(brEnc, BR_OFFSET) + deltaRadians;
-
-        // 2. Rotate to those new targets
-        long startTime = System.currentTimeMillis();
-
-        while (opModeIsActive() && System.currentTimeMillis() - startTime < 1000) {
-            updatePodD(flSteer, flEnc, FL_OFFSET, flTarget);
-            updatePodD(frSteer, frEnc, FR_OFFSET, frTarget);
-            updatePodD(blSteer, blEnc, BL_OFFSET, blTarget);
-            updatePodD(brSteer, brEnc, BR_OFFSET, brTarget);
-        }
-        stopSteer();
-    }
-
-    // Helper to get the actual current angle of a pod in Radians
-    private double getCurrentAngle(AnalogInput enc, double offset) {
-        // Convert 0-3.3V to 0-2PI Radians, then subtract the physical offset
-        return wrap((enc.getVoltage() / 3.3 * (2 * Math.PI)) - offset);
-    }
-
-    private void updatePodD(CRServo steer, AnalogInput enc, double offset, double target) {
-        // Use the helper to get current position
-        double current = getCurrentAngle(enc, offset);
-
-        // Calculate the shortest path to the target angle
-        double error = wrap(target - current);
-
-        // Apply power based on distance from target
-        steer.setPower(-STEER_KP * error);
     }
 
     // --- Helper Methods ---

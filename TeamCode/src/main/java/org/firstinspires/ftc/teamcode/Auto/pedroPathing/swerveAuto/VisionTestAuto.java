@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 
 import com.pedropathing.follower.Follower;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -18,6 +19,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
 
 @Autonomous(name = "Vision Test Auto (No Move)", group = "Test")
+@Disabled
 public class VisionTestAuto extends OpMode {
 
     private Follower follower;

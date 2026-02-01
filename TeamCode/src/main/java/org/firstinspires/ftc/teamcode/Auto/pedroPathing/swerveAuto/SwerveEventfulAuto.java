@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 
 import com.pedropathing.follower.Follower;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -10,6 +11,7 @@ import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.FieldP
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveConstants;
 
 @Autonomous(name = "Swerve Eventful Auto", group = "Swerve")
+@Disabled
 public class SwerveEventfulAuto extends OpMode {
 
     private Follower follower;
