@@ -4,22 +4,16 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
-import com.pedropathing.paths.PathConstraints;
 import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-
-import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveConstants;
-import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveDrivetrain;
 
 /**
  * Test OpMode to verify robot movement accuracy and Swerve Module Alignment.
  * Drives a Right-Hand Square: Forward -> Right -> Backward -> Left -> Start.
  */
 @Autonomous(name = "Square Path Test (X=Forward)", group = "Test")
-@Disabled
-public class SquarePathTest extends OpMode {
+public class NewAuto extends OpMode {
 
     private Follower follower;
     private int pathIndex = 0;
@@ -33,6 +27,8 @@ public class SquarePathTest extends OpMode {
     private final Pose corner2 = new Pose(24, -24, Math.toRadians(0)); //72, 96
     private final Pose corner3 = new Pose(0, -24, Math.toRadians(0));
 
+
+    // Pose Definitions (Standard FTC: X=Forward, Y=Left)
     // Start at (0,0) facing 0 radians (Forward/East)
 
     // Store targets in array for easy access by index
