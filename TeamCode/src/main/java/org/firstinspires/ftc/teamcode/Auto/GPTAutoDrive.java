@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Autonomous;
+package org.firstinspires.ftc.teamcode.Auto;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
@@ -19,10 +19,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 public class GPTAutoDrive extends LinearOpMode {
 
     /* ===================== PINPOINT ===================== */
-    private GoBildaPinpointDriver odo; // config name: "odo" (per your file)
+    private GoBildaPinpointDriver odo; // RC config name: "odo" (per your sample)
 
-    // Pinpoint reports: +Y = LEFT. You want: +Y = RIGHT => flip sign.
-    private static final double PINPOINT_TO_Y_RIGHT_SIGN = -1.0;
+    // Your SDK doesn't support EncoderDirection.REVERSE, so invert in SOFTWARE:
+    private static final double PINPOINT_X_SIGN = -1.0; // invert X pod reading
+    // Pinpoint Y+ is LEFT; we want +Y = RIGHT in our functions:
+    private static final double PINPOINT_Y_RIGHT_SIGN = -1.0;
 
     /* ===================== SWERVE HARDWARE ===================== */
     private DcMotor frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive;
@@ -30,69 +32,72 @@ public class GPTAutoDrive extends LinearOpMode {
     private AnalogInput frontLeftEncoder, frontRightEncoder, backLeftEncoder, backRightEncoder;
     private IMU imu;
 
-    /* ===================== SWERVE CONSTANTS (from your TeleOp) ===================== */
-    final double TRACK_WIDTH = 17.258;
-    final double WHEELBASE   = 13.544;
-    final double R = Math.hypot(TRACK_WIDTH, WHEELBASE);
-
+    /* ===================== STEERING OFFSETS (your TeleOp values) ===================== */
     final double FRONT_LEFT_OFFSET  = 1.34;
     final double FRONT_RIGHT_OFFSET = 3.161;
     final double BACK_LEFT_OFFSET   = 1.589;
     final double BACK_RIGHT_OFFSET  = 1.237;
 
-    // steering loop (same idea as TeleOp)
-    final double STEER_KP = 0.6;
+    /* ===================== STEER CONTROL ===================== */
+    final double STEER_KP = 0.7;
     final double STEER_DEADBAND = 0.05;
 
-    /* ===================== CONTROL SETTINGS ===================== */
-    // Distance control (keep this simple + stable): P + small D, no I
+    private static final double ALIGN_TOL_RAD = Math.toRadians(8.0);
+    private static final long   ALIGN_TIMEOUT_MS = 900;
+
+    /* ===================== DRIVE CONTROL ===================== */
+    // X distance PID (P + small D)
     private final PID xPID = new PID(0.035, 0.0, 0.004);
+    // Y distance PID (P + small D)
     private final PID yPID = new PID(0.035, 0.0, 0.004);
 
-    // Heading hold (P + D), no I
-    private final PID hPID = new PID(2.0, 0.0, 0.10);
+    // Heading hold used as a correction term
+    private final PID hPID = new PID(1.6, 0.0, 0.08);
 
-    private static final double MAX_TRANSLATE = 0.45; // lower = smoother/straighter
-    private static final double MAX_ROTATE    = 0.25;
+    private static final double MAX_TRANSLATE = 0.55;
+    private static final double MAX_TURN = 0.20;
 
     private static final double POS_TOL_IN = 0.75;
     private static final double HEAD_TOL_RAD = Math.toRadians(2.0);
 
-    // Pre-align requirements
-    private static final double ALIGN_TOL_RAD = Math.toRadians(10.0); // wheels considered "aimed"
-    private static final long   ALIGN_TIMEOUT_MS = 700;              // don’t get stuck forever
-
-    // gentle ramp to reduce snap/jitter
-    private static final double POWER_RAMP_PER_SEC = 1.6; // max change in power per second
+    private static final double POWER_RAMP_PER_SEC = 1.8;
 
     @Override
     public void runOpMode() {
         initHardware();
-        initOdometryLikeYourConfig();
+        initOdometry();
 
-        telemetry.addLine("GPTAutoDrive ready (pre-align wheels before driving).");
+        telemetry.addLine("GPTAutoDrive ready");
+        telemetry.addLine("X-only + Y-only distance functions, with module pre-align");
         telemetry.update();
 
         waitForStart();
         if (isStopRequested()) return;
 
-        // Demo: forward 24", right 12", back 24", left 12"
+        // Demo (replace)
         driveX(24);
-        driveY(12);
-        driveX(-24);
-        driveY(-12);
+        sleep(250);
+        driveYRight(18);
+        sleep(250);
+        driveX(-12);
+        sleep(250);
+        driveYRight(-18);
 
-        stopModules();
+        stopAll();
     }
 
-    /* ===================== YOUR PINPOINT CONFIG (mirrors your file) ===================== */
-    private void initOdometryLikeYourConfig() {
+    /* ===================== PINPOINT INIT (your config) ===================== */
+    private void initOdometry() {
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
 
         odo.setOffsets(-84.0, -168.0, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD,
-                GoBildaPinpointDriver.EncoderDirection.FORWARD);
+
+        // NOTE: This SDK version doesn't have REVERSE, so keep FORWARD/FORWARD.
+        odo.setEncoderDirections(
+                GoBildaPinpointDriver.EncoderDirection.FORWARD,
+                GoBildaPinpointDriver.EncoderDirection.FORWARD
+        );
 
         // Must be still here
         odo.resetPosAndIMU();
@@ -100,140 +105,154 @@ public class GPTAutoDrive extends LinearOpMode {
         odo.update();
     }
 
-    /* ===================== DRIVE-BY-DISTANCE (PUBLIC API) ===================== */
-    // + forward, - back
+    /* ===================== PUBLIC: DRIVE STRAIGHT IN X ===================== */
+    // +in = forward, -in = backward
     public void driveX(double inches) {
         Pose2D start = readPose();
-        double startX = start.getX(DistanceUnit.INCH);
+        double startX = xIn(start);
         double targetX = startX + inches;
         double holdHeading = headingRad(start);
 
         xPID.reset();
         hPID.reset();
 
-        // Desired motion: forward/back only (robotY), no strafe
-        // Step 1: pre-align wheels to that direction (point wheels BEFORE applying drive)
-        preAlignForMotion(+1.0 * Math.signum(inches), 0.0, holdHeading);
+        // Point all modules straight forward/back BEFORE driving
+        double desiredAngle = (inches >= 0) ? 0.0 : Math.PI; // 0 rad = forward, pi = backward
+        alignAllModulesTo(desiredAngle);
 
         ElapsedTime loopT = new ElapsedTime();
         loopT.reset();
-        double fwdCmdSmoothed = 0.0;
+
+        double baseSmoothed = 0.0;
 
         while (opModeIsActive()) {
             Pose2D p = readPose();
             double dt = Math.max(0.01, loopT.seconds());
             loopT.reset();
 
-            double xErr = targetX - p.getX(DistanceUnit.INCH);
+            double xErr = targetX - xIn(p);
             double hErr = wrapRad(holdHeading - headingRad(p));
 
             if (Math.abs(xErr) <= POS_TOL_IN && Math.abs(hErr) <= HEAD_TOL_RAD) break;
 
-            // PID distance -> forward command
-            double fwdCmd = xPID.update(xErr, dt);
-            fwdCmd = clamp(fwdCmd, -MAX_TRANSLATE, MAX_TRANSLATE);
+            double base = xPID.update(xErr, dt);
+            base = clamp(base, -MAX_TRANSLATE, MAX_TRANSLATE);
+            baseSmoothed = ramp(baseSmoothed, base, POWER_RAMP_PER_SEC, dt);
 
-            // Smooth ramp to avoid jerk (helps straightness)
-            fwdCmdSmoothed = ramp(fwdCmdSmoothed, fwdCmd, POWER_RAMP_PER_SEC, dt);
+            double turn = hPID.update(hErr, dt);
+            turn = clamp(turn, -MAX_TURN, MAX_TURN);
 
-            // Heading correction
-            double rotCmd = hPID.update(hErr, dt);
-            rotCmd = clamp(rotCmd, -MAX_ROTATE, MAX_ROTATE);
+            // Heading correction: left/right differential
+            double leftPower  = clamp(baseSmoothed - turn, -1.0, 1.0);
+            double rightPower = clamp(baseSmoothed + turn, -1.0, 1.0);
 
-            // Step 2: drive using already-aligned direction
-            setSwerveDrive(fwdCmdSmoothed, 0.0, rotCmd);
+            // Keep modules locked while moving
+            steerHold(desiredAngle);
+
+            frontLeftDrive.setPower(leftPower);
+            backLeftDrive.setPower(leftPower);
+            frontRightDrive.setPower(rightPower);
+            backRightDrive.setPower(rightPower);
 
             telemetry.addLine("driveX()");
-            telemetry.addData("TargetX", "%.2f", targetX);
-            telemetry.addData("X", "%.2f", p.getX(DistanceUnit.INCH));
-            telemetry.addData("Xerr", "%.2f", xErr);
+            telemetry.addData("X(in)", "%.2f", xIn(p));
+            telemetry.addData("TargetX(in)", "%.2f", targetX);
+            telemetry.addData("Xerr(in)", "%.2f", xErr);
             telemetry.addData("Head(deg)", "%.1f", p.getHeading(AngleUnit.DEGREES));
-            telemetry.addData("Cmd fwd", "%.2f", fwdCmdSmoothed);
-            telemetry.addData("Cmd rot", "%.2f", rotCmd);
+            telemetry.addData("Herr(deg)", "%.2f", Math.toDegrees(hErr));
+            telemetry.addData("Base", "%.2f", baseSmoothed);
+            telemetry.addData("Turn", "%.2f", turn);
+            telemetry.addData("L/R", "%.2f / %.2f", leftPower, rightPower);
             telemetry.update();
         }
 
-        setSwerveDrive(0, 0, 0);
+        stopAll();
         sleep(60);
     }
 
-    // + right, - left (your requested convention)
-    public void driveY(double inchesRight) {
+    /* ===================== PUBLIC: DRIVE STRAIGHT IN Y ONLY ===================== */
+    // +in = right, -in = left
+    public void driveYRight(double inchesRight) {
         Pose2D start = readPose();
-        double startYRight = yRightIn(start);
-        double targetYRight = startYRight + inchesRight;
+        double startY = yRightIn(start);
+        double targetY = startY + inchesRight;
         double holdHeading = headingRad(start);
 
         yPID.reset();
         hPID.reset();
 
-        // Desired motion: strafe only (robotX)
-        preAlignForMotion(0.0, +1.0 * Math.signum(inchesRight), holdHeading);
+        // For strafe right: wheels point +90deg. For strafe left: -90deg (or 270)
+        double desiredAngle = (inchesRight >= 0) ? (Math.PI / 2.0) : (-Math.PI / 2.0);
+        alignAllModulesTo(desiredAngle);
 
         ElapsedTime loopT = new ElapsedTime();
         loopT.reset();
-        double strCmdSmoothed = 0.0;
+
+        double baseSmoothed = 0.0;
 
         while (opModeIsActive()) {
             Pose2D p = readPose();
             double dt = Math.max(0.01, loopT.seconds());
             loopT.reset();
 
-            double yErr = targetYRight - yRightIn(p);
+            double yErr = targetY - yRightIn(p);
             double hErr = wrapRad(holdHeading - headingRad(p));
 
             if (Math.abs(yErr) <= POS_TOL_IN && Math.abs(hErr) <= HEAD_TOL_RAD) break;
 
-            double strCmd = yPID.update(yErr, dt);
-            strCmd = clamp(strCmd, -MAX_TRANSLATE, MAX_TRANSLATE);
+            double base = yPID.update(yErr, dt);
+            base = clamp(base, -MAX_TRANSLATE, MAX_TRANSLATE);
+            baseSmoothed = ramp(baseSmoothed, base, POWER_RAMP_PER_SEC, dt);
 
-            strCmdSmoothed = ramp(strCmdSmoothed, strCmd, POWER_RAMP_PER_SEC, dt);
+            double turn = hPID.update(hErr, dt);
+            turn = clamp(turn, -MAX_TURN, MAX_TURN);
 
-            double rotCmd = hPID.update(hErr, dt);
-            rotCmd = clamp(rotCmd, -MAX_ROTATE, MAX_ROTATE);
+            // For pure strafe with heading correction:
+            // Add yaw via diagonals so you don’t “tank steer” while wheels are sideways.
+            double fl = clamp(baseSmoothed + turn, -1.0, 1.0);
+            double br = clamp(baseSmoothed + turn, -1.0, 1.0);
+            double fr = clamp(baseSmoothed - turn, -1.0, 1.0);
+            double bl = clamp(baseSmoothed - turn, -1.0, 1.0);
 
-            setSwerveDrive(0.0, strCmdSmoothed, rotCmd);
+            steerHold(desiredAngle);
 
-            telemetry.addLine("driveY()");
-            telemetry.addData("TargetY_R", "%.2f", targetYRight);
-            telemetry.addData("Y_R", "%.2f", yRightIn(p));
-            telemetry.addData("Yerr", "%.2f", yErr);
+            frontLeftDrive.setPower(fl);
+            backRightDrive.setPower(br);
+            frontRightDrive.setPower(fr);
+            backLeftDrive.setPower(bl);
+
+            telemetry.addLine("driveYRight()");
+            telemetry.addData("Y_R(in)", "%.2f", yRightIn(p));
+            telemetry.addData("TargetY_R(in)", "%.2f", targetY);
+            telemetry.addData("Yerr(in)", "%.2f", yErr);
             telemetry.addData("Head(deg)", "%.1f", p.getHeading(AngleUnit.DEGREES));
-            telemetry.addData("Cmd str", "%.2f", strCmdSmoothed);
-            telemetry.addData("Cmd rot", "%.2f", rotCmd);
+            telemetry.addData("Herr(deg)", "%.2f", Math.toDegrees(hErr));
+            telemetry.addData("Base", "%.2f", baseSmoothed);
+            telemetry.addData("Turn", "%.2f", turn);
             telemetry.update();
         }
 
-        setSwerveDrive(0, 0, 0);
+        stopAll();
         sleep(60);
     }
 
-    /* ===================== PRE-ALIGN: SET WHEEL DIRECTION FIRST ===================== */
-    // desiredRobotY: sign(+/-) or 0 ; desiredRobotX: sign(+/-) or 0 ; rot=0 during align
-    private void preAlignForMotion(double desiredRobotY, double desiredRobotX, double holdHeadingRad) {
-        // If both are zero, nothing to align
-        if (Math.abs(desiredRobotY) < 1e-6 && Math.abs(desiredRobotX) < 1e-6) return;
-
-        // Build a “direction-only” command: normalize to 1 so targets are stable
-        double mag = Math.hypot(desiredRobotX, desiredRobotY);
-        double robotX = desiredRobotX / mag;
-        double robotY = desiredRobotY / mag;
-
-        // Compute module targets for that direction with rot = 0
-        ModuleTargets targets = computeTargets(robotY, robotX, 0.0);
-
+    /* ===================== MODULE ALIGN / HOLD ===================== */
+    private void alignAllModulesTo(double targetAngleRad) {
         long start = System.currentTimeMillis();
         while (opModeIsActive() && (System.currentTimeMillis() - start) < ALIGN_TIMEOUT_MS) {
-            // Apply ONLY steering toward the targets; drive power = 0
-            steerOnlyToTargets(targets);
+            runSteer(frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  targetAngleRad);
+            runSteer(frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, targetAngleRad);
+            runSteer(backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   targetAngleRad);
+            runSteer(backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  targetAngleRad);
 
-            if (modulesAligned(targets, ALIGN_TOL_RAD)) break;
+            frontLeftDrive.setPower(0);
+            frontRightDrive.setPower(0);
+            backLeftDrive.setPower(0);
+            backRightDrive.setPower(0);
 
-            telemetry.addLine("Aligning modules...");
-            telemetry.update();
+            if (allAligned(targetAngleRad, ALIGN_TOL_RAD)) break;
         }
 
-        // Stop steering briefly to reduce “hunting” right before drive starts
         frontLeftSteer.setPower(0);
         frontRightSteer.setPower(0);
         backLeftSteer.setPower(0);
@@ -241,104 +260,34 @@ public class GPTAutoDrive extends LinearOpMode {
         sleep(40);
     }
 
-    private void steerOnlyToTargets(ModuleTargets t) {
-        runSteer(frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  t.angFL);
-        runSteer(frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, t.angFR);
-        runSteer(backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   t.angBL);
-        runSteer(backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  t.angBR);
-
-        // Ensure drives are OFF during alignment
-        frontLeftDrive.setPower(0);
-        frontRightDrive.setPower(0);
-        backLeftDrive.setPower(0);
-        backRightDrive.setPower(0);
+    private void steerHold(double targetAngleRad) {
+        runSteer(frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  targetAngleRad);
+        runSteer(frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, targetAngleRad);
+        runSteer(backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   targetAngleRad);
+        runSteer(backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  targetAngleRad);
     }
 
-    private boolean modulesAligned(ModuleTargets t, double tolRad) {
-        double eFL = Math.abs(wrapAngle(t.angFL - currentModuleAngle(frontLeftEncoder, FRONT_LEFT_OFFSET)));
-        double eFR = Math.abs(wrapAngle(t.angFR - currentModuleAngle(frontRightEncoder, FRONT_RIGHT_OFFSET)));
-        double eBL = Math.abs(wrapAngle(t.angBL - currentModuleAngle(backLeftEncoder, BACK_LEFT_OFFSET)));
-        double eBR = Math.abs(wrapAngle(t.angBR - currentModuleAngle(backRightEncoder, BACK_RIGHT_OFFSET)));
+    private boolean allAligned(double targetAngleRad, double tolRad) {
+        double eFL = Math.abs(wrapAngle(targetAngleRad - moduleAngle(frontLeftEncoder, FRONT_LEFT_OFFSET)));
+        double eFR = Math.abs(wrapAngle(targetAngleRad - moduleAngle(frontRightEncoder, FRONT_RIGHT_OFFSET)));
+        double eBL = Math.abs(wrapAngle(targetAngleRad - moduleAngle(backLeftEncoder, BACK_LEFT_OFFSET)));
+        double eBR = Math.abs(wrapAngle(targetAngleRad - moduleAngle(backRightEncoder, BACK_RIGHT_OFFSET)));
         return (eFL < tolRad && eFR < tolRad && eBL < tolRad && eBR < tolRad);
     }
 
     private void runSteer(CRServo steer, AnalogInput enc, double offset, double targetAng) {
-        double current = currentModuleAngle(enc, offset);
+        double current = moduleAngle(enc, offset);
         double delta = wrapAngle(targetAng - current);
 
-        // same flip logic so steering goes shortest way
         if (Math.abs(delta) > Math.PI / 2) delta = wrapAngle(delta + Math.PI);
 
-        double steerPower = clamp(-STEER_KP * delta, -1, 1);
-        if (Math.abs(steerPower) < STEER_DEADBAND) steerPower = 0;
-        steer.setPower(steerPower);
+        double power = clamp(-STEER_KP * delta, -1, 1);
+        if (Math.abs(power) < STEER_DEADBAND) power = 0;
+        steer.setPower(power);
     }
 
-    private double currentModuleAngle(AnalogInput enc, double offset) {
+    private double moduleAngle(AnalogInput enc, double offset) {
         return wrapAngle(getRawAngle(enc) - offset);
-    }
-
-    /* ===================== SWERVE DRIVE (same as your TeleOp structure) ===================== */
-    private void setSwerveDrive(double robotY, double robotX, double rot) {
-        ModuleTargets t = computeTargets(robotY, robotX, rot);
-
-        runModule(frontLeftDrive,  frontLeftSteer,  frontLeftEncoder,  FRONT_LEFT_OFFSET,  t.spdFL, t.angFL);
-        runModule(frontRightDrive, frontRightSteer, frontRightEncoder, FRONT_RIGHT_OFFSET, t.spdFR, t.angFR);
-        runModule(backLeftDrive,   backLeftSteer,   backLeftEncoder,   BACK_LEFT_OFFSET,   t.spdBL, t.angBL);
-        runModule(backRightDrive,  backRightSteer,  backRightEncoder,  BACK_RIGHT_OFFSET,  t.spdBR, t.angBR);
-    }
-
-    private ModuleTargets computeTargets(double robotY, double robotX, double rot) {
-        double A = robotX - rot * (WHEELBASE / R);
-        double B = robotX + rot * (WHEELBASE / R);
-        double C = robotY - rot * (TRACK_WIDTH / R);
-        double D = robotY + rot * (TRACK_WIDTH / R);
-
-        double spdFL = Math.hypot(B, D);
-        double spdFR = Math.hypot(B, C);
-        double spdBL = Math.hypot(A, D);
-        double spdBR = Math.hypot(A, C);
-
-        double max = Math.max(Math.max(spdFL, spdFR), Math.max(spdBL, spdBR));
-        if (max > 1.0) {
-            spdFL /= max; spdFR /= max; spdBL /= max; spdBR /= max;
-        }
-
-        double angFL = Math.atan2(B, D);
-        double angFR = Math.atan2(B, C);
-        double angBL = Math.atan2(A, D);
-        double angBR = Math.atan2(A, C);
-
-        return new ModuleTargets(spdFL, spdFR, spdBL, spdBR, angFL, angFR, angBL, angBR);
-    }
-
-    private void runModule(DcMotor drive, CRServo steer, AnalogInput enc,
-                           double offset, double speed, double target) {
-        double current = wrapAngle(getRawAngle(enc) - offset);
-        double delta = wrapAngle(target - current);
-
-        if (Math.abs(delta) > Math.PI / 2) {
-            delta = wrapAngle(delta + Math.PI);
-            speed *= -1;
-        }
-
-        double steerPower = clamp(-STEER_KP * delta, -1, 1);
-        if (Math.abs(steerPower) < STEER_DEADBAND) steerPower = 0;
-
-        steer.setPower(steerPower);
-        drive.setPower(speed);
-    }
-
-    private void stopModules() {
-        frontLeftDrive.setPower(0);
-        frontRightDrive.setPower(0);
-        backLeftDrive.setPower(0);
-        backRightDrive.setPower(0);
-
-        frontLeftSteer.setPower(0);
-        frontRightSteer.setPower(0);
-        backLeftSteer.setPower(0);
-        backRightSteer.setPower(0);
     }
 
     /* ===================== POSE HELPERS ===================== */
@@ -347,12 +296,29 @@ public class GPTAutoDrive extends LinearOpMode {
         return odo.getPosition();
     }
 
+    private double xIn(Pose2D p) {
+        return PINPOINT_X_SIGN * p.getX(DistanceUnit.INCH);
+    }
+
     private double yRightIn(Pose2D p) {
-        return PINPOINT_TO_Y_RIGHT_SIGN * p.getY(DistanceUnit.INCH);
+        return PINPOINT_Y_RIGHT_SIGN * p.getY(DistanceUnit.INCH);
     }
 
     private double headingRad(Pose2D p) {
         return Math.toRadians(p.getHeading(AngleUnit.DEGREES));
+    }
+
+    /* ===================== STOP ===================== */
+    private void stopAll() {
+        frontLeftDrive.setPower(0);
+        frontRightDrive.setPower(0);
+        backLeftDrive.setPower(0);
+        backRightDrive.setPower(0);
+
+        frontLeftSteer.setPower(0);
+        frontRightSteer.setPower(0);
+        backLeftSteer.setPower(0);
+        backRightSteer.setPower(0);
     }
 
     /* ===================== MATH / UTIL ===================== */
@@ -382,17 +348,6 @@ public class GPTAutoDrive extends LinearOpMode {
         if (delta > maxDelta) delta = maxDelta;
         if (delta < -maxDelta) delta = -maxDelta;
         return current + delta;
-    }
-
-    /* ===================== SMALL STRUCT ===================== */
-    private static class ModuleTargets {
-        final double spdFL, spdFR, spdBL, spdBR;
-        final double angFL, angFR, angBL, angBR;
-        ModuleTargets(double sfl, double sfr, double sbl, double sbr,
-                      double afl, double afr, double abl, double abr) {
-            spdFL = sfl; spdFR = sfr; spdBL = sbl; spdBR = sbr;
-            angFL = afl; angFR = afr; angBL = abl; angBR = abr;
-        }
     }
 
     /* ===================== PID ===================== */
@@ -441,7 +396,7 @@ public class GPTAutoDrive extends LinearOpMode {
                 )
         ));
 
-        // Match your TeleOp directions
+        // Match your TeleOp motor directions
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         backLeftDrive.setDirection(DcMotor.Direction.REVERSE);
         frontRightDrive.setDirection(DcMotor.Direction.REVERSE);
