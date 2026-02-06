@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.TeleOp;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.hardware.rev.RevColorSensorV3;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -11,6 +12,7 @@ import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -33,9 +35,20 @@ public class PotatoSwerve extends LinearOpMode {
     private Servo trigger;
     private Servo adjuster;
 
+    /* ===================== SIDE SORT SERVO ===================== */
+    private Servo sideSort;
+    private static final double SIDE_SORT_CENTERED = 0.425;
+    private static final double SIDE_SORT_STOWED   = 0.975;
+    private double sideSortPos = SIDE_SORT_CENTERED;
+    private boolean sideSortTogglePrev = false;
+
     /* ===================== SENSORS (BALL DISTANCE) ===================== */
     private NormalizedColorSensor frontColor, centerColor, backColor; // kept for config compatibility
     private DistanceSensor frontDist, centerDist, backDist;
+
+    /* ===================== SENSOR LED CONTROL ===================== */
+    private SwitchableLight frontLight, centerLight, backLight;
+    private boolean sensorLightsOn = false;
 
     /* ===================== SWERVE CONSTANTS ===================== */
     final double TRACK_WIDTH = 17.258;
@@ -69,7 +82,7 @@ public class PotatoSwerve extends LinearOpMode {
 
     private double currentTurretRotation = 0.5;
 
-    // ✅ NEW: edge-detect for GP2 A turret center
+    // ✅ edge-detect for GP2 A turret center
     private boolean turretCenterPrev = false;
 
     /* ===================== ADJUSTER CONTROL (GP2 LSY, slow with GP2 RB, faster than turret) ===================== */
@@ -134,9 +147,11 @@ public class PotatoSwerve extends LinearOpMode {
     final long FEED_TIMEOUT_MS = 1250;
 
     /* ===================== DISTANCE BALL DETECTION (HYSTERESIS) ===================== */
-    final double FRONT_ON_CM  = 2.5, FRONT_OFF_CM  = 3.2;
-    final double CENTER_ON_CM = 2.5, CENTER_OFF_CM = 4.0;
-    final double BACK_ON_CM   = 2.5, BACK_OFF_CM   = 4.0;
+    // You said “nothing there” bottoms out around ~6.2cm.
+    // Detect object at 4.0cm, release at 5.0cm (hysteresis).
+    final double FRONT_ON_CM  = 4.0, FRONT_OFF_CM  = 5.0;
+    final double CENTER_ON_CM = 4.0, CENTER_OFF_CM = 5.0;
+    final double BACK_ON_CM   = 4.0, BACK_OFF_CM   = 5.0;
 
     private boolean frontHasBall = false;
     private boolean centerHasBall = false;
@@ -188,11 +203,26 @@ public class PotatoSwerve extends LinearOpMode {
         turretRotation2.setPosition(1.0 - currentTurretRotation);
         adjuster.setPosition(adjusterPos);
 
+        // ✅ side sort starts centered
+        sideSortPos = SIDE_SORT_CENTERED;
+        if (sideSort != null) sideSort.setPosition(sideSortPos);
+
+        // LEDs start off
+        updateSensorLights(false);
+
         waitForStart();
 
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
 
         while (opModeIsActive()) {
+
+            /* ===================== SIDE SORT TOGGLE (GP2 X) ===================== */
+            boolean sideSortToggle = gamepad2.x;
+            if (sideSortToggle && !sideSortTogglePrev) {
+                sideSortPos = (sideSortPos == SIDE_SORT_CENTERED) ? SIDE_SORT_STOWED : SIDE_SORT_CENTERED;
+                if (sideSort != null) sideSort.setPosition(sideSortPos);
+            }
+            sideSortTogglePrev = sideSortToggle;
 
             /* ===================== FLYWHEEL POWER TRIM (GP2 DPAD) ===================== */
             if (gamepad2.dpad_up) {
@@ -203,6 +233,10 @@ public class PotatoSwerve extends LinearOpMode {
                 adjusterPos = CLOSE_ADJUSTER;
             }
             flyPower = clamp(flyPower, 0.0, 1.0);
+
+            /* ===================== SENSOR LIGHTS ON ONLY WHEN NEEDED ===================== */
+            boolean sensorsNeeded = (launchState != LaunchState.IDLE) || isIntakeOn;
+            updateSensorLights(sensorsNeeded);
 
             /* ===================== BALL DISTANCE SENSING ===================== */
             double fCm = safeDistanceCm(frontDist);
@@ -295,7 +329,7 @@ public class PotatoSwerve extends LinearOpMode {
             if (Math.abs(adjInput) < ADJUSTER_DEADBAND) adjInput = 0;
 
             double adjRate = gamepad2.right_bumper ? ADJUSTER_RATE_SLOW : ADJUSTER_RATE_FAST;
-            adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);//*/
+            adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);
             adjuster.setPosition(adjusterPos);
 
             /* ===================== MANUAL INTAKE (when not launching) ===================== */
@@ -311,21 +345,6 @@ public class PotatoSwerve extends LinearOpMode {
                 if (isIntakeOn) applySmartIntake();
                 else { frontIntake.setPower(0); backIntake.setPower(0); }
             }
-
-            /* ===================== FLYWHEEL TOGGLE (GP1 LT) ===================== */
-           /* boolean flyToggle = gamepad1.left_trigger > 0.5;
-            if (flyToggle && !flyTogglePrev) flywheelOn = !flywheelOn;
-            flyTogglePrev = flyToggle;
-
-            if (launchState == LaunchState.IDLE) {
-                if (flywheelOn) {
-                    leftFly.setPower(flyPower);
-                    rightFly.setPower(flyPower);
-                } else {
-                    leftFly.setPower(0);
-                    rightFly.setPower(0);
-                }
-            }*/
 
             /* ===================== LAUNCH START (GP1 A) ===================== */
             if (launchState == LaunchState.IDLE && gamepad1.a) {
@@ -530,14 +549,41 @@ public class PotatoSwerve extends LinearOpMode {
                     break;
             }
 
-            /* ===================== TELEMETRY (includes fly trim + voltage) ===================== */
+            /* ===================== TELEMETRY (includes distances) ===================== */
             double vbat = (voltageSensor != null) ? voltageSensor.getVoltage() : Double.NaN;
+
             telemetry.addData("FlyPower", "%.3f", flyPower);
             telemetry.addData("VBatt", Double.isNaN(vbat) ? "?" : String.format("%.2fV", vbat));
             telemetry.addData("Turret", "%.3f", currentTurretRotation);
             telemetry.addData("Adjuster", "%.3f", adjusterPos);
+
+            telemetry.addData("Dist Front (cm)", "%.1f", fCm);
+            telemetry.addData("Dist Center (cm)", "%.1f", cCm);
+            telemetry.addData("Dist Back (cm)", "%.1f", bCm);
+
+            telemetry.addData("FrontBall", frontHasBall);
+            telemetry.addData("CenterBall", centerHasBall);
+            telemetry.addData("BackBall", backHasBall);
+
+            telemetry.addData("LEDs", sensorLightsOn ? "ON" : "OFF");
+            telemetry.addData("SideSort", (sideSortPos == SIDE_SORT_CENTERED) ? "CENTERED" : "STOWED");
+
             telemetry.update();
         }
+    }
+
+    /* ===================== SENSOR LIGHT HELPERS ===================== */
+    private void updateSensorLights(boolean shouldBeOn) {
+        if (shouldBeOn == sensorLightsOn) return;
+        sensorLightsOn = shouldBeOn;
+
+        setLight(frontLight, shouldBeOn);
+        setLight(centerLight, shouldBeOn);
+        setLight(backLight, shouldBeOn);
+    }
+
+    private void setLight(SwitchableLight light, boolean on) {
+        if (light != null) light.enableLight(on);
     }
 
     /* ===================== SMART INTAKE LOGIC ===================== */
@@ -589,6 +635,9 @@ public class PotatoSwerve extends LinearOpMode {
 
         clearRetryCount = 0;
         launchState = LaunchState.IDLE;
+
+        // turn LEDs off immediately on abort
+        updateSensorLights(false);
     }
 
     /* ===================== DISTANCE HELPERS ===================== */
@@ -695,17 +744,46 @@ public class PotatoSwerve extends LinearOpMode {
         turretRotation2.setDirection(Servo.Direction.REVERSE);
 
         trigger = hardwareMap.get(Servo.class, "trigger");
-        //trigger.setPosition(TRIGGER_HOME);
-
         adjuster = hardwareMap.get(Servo.class, "adjuster");
-        //adjuster.setPosition(adjusterPos);
 
-        frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
-        centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
-        backColor   = hardwareMap.get(NormalizedColorSensor.class, "backColor");
+        // ✅ side sort servo mapping
+        sideSort = hardwareMap.get(Servo.class, "side_sort");
 
-        frontDist  = hardwareMap.get(DistanceSensor.class, "frontColor");
-        centerDist = hardwareMap.get(DistanceSensor.class, "centerColor");
-        backDist   = hardwareMap.get(DistanceSensor.class, "backColor");
+        /*
+         * Sensors: we map NormalizedColorSensor (as you had),
+         * plus try to map RevColorSensorV3 for more reliable SwitchableLight exposure.
+         * NO direct enableLight calls on RevColorSensorV3 (your SDK doesn’t have it).
+         */
+        try {
+            RevColorSensorV3 f = hardwareMap.get(RevColorSensorV3.class, "frontColor");
+            RevColorSensorV3 c = hardwareMap.get(RevColorSensorV3.class, "centerColor");
+            RevColorSensorV3 b = hardwareMap.get(RevColorSensorV3.class, "backColor");
+
+            frontColor  = f;
+            centerColor = c;
+            backColor   = b;
+
+            frontDist  = f;
+            centerDist = c;
+            backDist   = b;
+
+            frontLight  = (f instanceof SwitchableLight) ? (SwitchableLight) f : null;
+            centerLight = (c instanceof SwitchableLight) ? (SwitchableLight) c : null;
+            backLight   = (b instanceof SwitchableLight) ? (SwitchableLight) b : null;
+
+        } catch (Exception e) {
+            // fallback to your original mapping
+            frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
+            centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
+            backColor   = hardwareMap.get(NormalizedColorSensor.class, "backColor");
+
+            frontDist  = hardwareMap.get(DistanceSensor.class, "frontColor");
+            centerDist = hardwareMap.get(DistanceSensor.class, "centerColor");
+            backDist   = hardwareMap.get(DistanceSensor.class, "backColor");
+
+            frontLight  = (frontColor  instanceof SwitchableLight) ? (SwitchableLight) frontColor  : null;
+            centerLight = (centerColor instanceof SwitchableLight) ? (SwitchableLight) centerColor : null;
+            backLight   = (backColor   instanceof SwitchableLight) ? (SwitchableLight) backColor   : null;
+        }
     }
 }
