@@ -7,6 +7,7 @@ repositories {
     maven { url = "https://mymaven.bylazar.com/releases" } // pedropathing tuning
     maven { url = 'https://maven.pedropathing.com' } // isn't this redundant? "well, if it works, DON'T TOUCH IT!"
     maven { url = "https://mymaven.bylazar.com/releases" } // okay, this is definitely redundant...
+    maven { url 'https://jitpack.io' } // Add this line
 }
 
 dependencies {
@@ -29,6 +30,7 @@ dependencies {
     implementation 'com.pedropathing:ftc:2.0.1'
     implementation 'com.pedropathing:telemetry:0.0.6'
     implementation("com.pedropathing:core:2.0.5")
+
 
     // pedropathing tuning
     implementation 'com.bylazar:fullpanels:1.0.6'

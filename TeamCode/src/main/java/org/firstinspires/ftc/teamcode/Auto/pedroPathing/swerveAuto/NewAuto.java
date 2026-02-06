@@ -12,7 +12,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
  * Test OpMode to verify robot movement accuracy and Swerve Module Alignment.
  * Drives a Right-Hand Square: Forward -> Right -> Backward -> Left -> Start.
  */
-@Autonomous(name = "Square Path Test (X=Forward)", group = "Test")
+@Autonomous(name = "SquaresNew" , group = "Test")
 public class NewAuto extends OpMode {
 
     private Follower follower;

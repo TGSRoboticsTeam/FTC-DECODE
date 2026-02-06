@@ -44,7 +44,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 
     // --- Steering PID Constants ---
-        public static final double STEER_KP = 0.6;
+        public static final double STEER_KP = 0.12;
         public static final double STEER_DEADBAND = 0.05;
 
 

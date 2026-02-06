@@ -25,4 +25,13 @@ android {
 
 dependencies {
     implementation project(':FtcRobotController')
+
+
+    annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
+
+    // Implementation for Pedro Pathing
+    //implementation 'com.github.pedropathing:pedro-pathing:v0.1.2'
+
+    // Since you are using the Pinpoint driver, ensure you have the gobilda driver dependency
+    //implementation 'com.qualcomm.hardware:gobilda:1.0.0'
 }
