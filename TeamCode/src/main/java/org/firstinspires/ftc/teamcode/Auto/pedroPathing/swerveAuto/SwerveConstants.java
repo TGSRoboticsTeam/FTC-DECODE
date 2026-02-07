@@ -44,8 +44,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 
     // --- Steering PID Constants ---
-        public static final double STEER_KP = 0.12;
-        public static final double STEER_DEADBAND = 0.05;
+        public static final double STEER_KP = 1.0;
+        public static final double STEER_DEADBAND = 0.03;
 
 
     // --- Pinpoint Localizer Offsets (in mm) ---

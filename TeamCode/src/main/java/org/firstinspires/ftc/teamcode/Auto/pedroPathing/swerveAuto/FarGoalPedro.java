@@ -105,8 +105,18 @@ public class FarGoalPedro extends LinearOpMode {
                // pathTimer.resetTimer();
               //  if (pathTimer.getElapsedTimeSeconds() > 1.0) {
                   //  fireThreeTimes();
+                double initialTarget = driveToRight.getPath(0).getHeadingGoal(0);
+
+                // Cast the drivetrain to your custom class to access the new method
+                ((SwerveDrivetrain) follower.getDrivetrain()).rotatePodsOnly(initialTarget);
+
+                // Wait 0.8 seconds for the servos to finish turning
+                pathTimer.resetTimer();
+                if (pathTimer.getElapsedTimeSeconds() > 0.8) {
                     follower.followPath(driveToRight);
-                    setPathState(1);
+                    setPathState(1); // Move to the state that calls follower.followPath()
+                }
+
               //  }
                 break;
 

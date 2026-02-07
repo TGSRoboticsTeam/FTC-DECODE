@@ -129,9 +129,9 @@ public class SwerveDrivetrain extends Drivetrain {
     @Override
     public void runDrive(double[] drivePowers) {
         // Voltage Compensation
-        double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
-        multiplier *= maxPowerScaling;
-
+        //double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
+        //multiplier *= maxPowerScaling;
+        double multiplier = 0;
         // Apply control to each module
         runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, drivePowers[0] * multiplier, targetAngles[0]);
         runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, drivePowers[1] * multiplier, targetAngles[1]);
@@ -176,6 +176,13 @@ public class SwerveDrivetrain extends Drivetrain {
     private double getRawAngle(AnalogInput encoder) {
         // Convert 0-3.3V to 0-2PI Radians
         return encoder.getVoltage() / 3.3 * (2 * Math.PI);
+    }
+    public void rotatePodsOnly(double targetAngle) {
+        // We reuse your runModule logic but pass 0.0 for the speed parameter
+        runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, 0.0, targetAngle);
+        runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, 0.0, targetAngle);
+        runModule(blDrive, blSteer, blEnc, BACK_LEFT_OFFSET, 0.0, targetAngle);
+        runModule(brDrive, brSteer, brEnc, BACK_RIGHT_OFFSET, 0.0, targetAngle);
     }
 
     private double wrapAngle(double angle) {
