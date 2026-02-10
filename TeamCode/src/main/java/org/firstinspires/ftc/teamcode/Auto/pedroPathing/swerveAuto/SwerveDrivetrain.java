@@ -83,8 +83,8 @@ public class SwerveDrivetrain extends Drivetrain {
 
 
          //Division by 2 added to slow this thing down
-        double x = combined.getXComponent()/2;
-        double y = combined.getYComponent()/2;
+        double x = combined.getXComponent();
+        double y = combined.getYComponent();
 
         // 3. Determine Rotation Power
         double rot = headingPower.getMagnitude() * Math.signum(MathFunctions.getTurnDirection(robotHeading, headingPower.getTheta()));
@@ -129,9 +129,9 @@ public class SwerveDrivetrain extends Drivetrain {
     @Override
     public void runDrive(double[] drivePowers) {
         // Voltage Compensation
-        //double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
-        //multiplier *= maxPowerScaling;
-        double multiplier = 0;
+        double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
+        multiplier *= maxPowerScaling/2;
+
         // Apply control to each module
         runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, drivePowers[0] * multiplier, targetAngles[0]);
         runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, drivePowers[1] * multiplier, targetAngles[1]);

@@ -1,22 +1,21 @@
 package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 
+import com.pedropathing.follower.Follower;
+import com.pedropathing.geometry.BezierLine;
+import com.pedropathing.geometry.Pose;
+import com.pedropathing.paths.PathChain;
+import com.pedropathing.paths.Path;
+import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
-// Pedro v2.1+ Imports
-import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.Pose;
-import com.pedropathing.geometry.BezierLine;
-import com.pedropathing.paths.PathChain;
-import com.pedropathing.util.Timer;
-
 // Import your custom constants factory
-import static org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveConstants.*;
 
-@Autonomous(name = "Pedro Swerve: Far Goal Final", group = "Swerve")
-public class FarGoalPedro extends LinearOpMode {
+
+@Autonomous(name = "Pedro Swerve: Far Goal Tuned", group = "Swerve")
+public class FarGoalTunedPedro extends LinearOpMode {
 
     private Follower follower;
     private Timer pathTimer;
@@ -30,34 +29,42 @@ public class FarGoalPedro extends LinearOpMode {
 
     // --- Path Definitions ---
     private PathChain driveToRight, driveToIntake, returnToScore,driveTo2ndIntake,returnTo2ndScore;
-    private final Pose startPose = new Pose(0, 0, 0);
+    private Pose p0,p1,p2,p3,p4,p5,p6;
+    private Path path1,path2,path3,path4,path5,path6;
+    public static double TARGET_TILE_INCHES = 24.0;
+
+
 
     public void buildPaths() {
-        // Using the v2.1 Pose-based BezierLine
-        driveToRight = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(0, 0, 0), new Pose(0, -51, 0)))
-                .setConstantHeadingInterpolation(0)
-                .build();
+        p0 = new Pose(9, 0, 0);
+        p1 = new Pose(TARGET_TILE_INCHES*1.5, 0, 0);//In front of row 1
+        p2 = new Pose(TARGET_TILE_INCHES*1.5,30 , 0); //Through row 1
+        p3 = new Pose(TARGET_TILE_INCHES*2.5, 0, 0); //Front row 2
+        p4 = new Pose(TARGET_TILE_INCHES*2.5, 30, 0);   //Through row 2
+        p5 = new Pose(TARGET_TILE_INCHES*3.5, 0, 0); //Front row 3
+        p6 = new Pose(TARGET_TILE_INCHES*3.5, 30, 0);//Through row 3
 
-        driveToIntake = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(0, -51, 0), new Pose(30, -51, 0)))
-                .setConstantHeadingInterpolation(0)
-                .build();
+        path1 = new Path(new BezierLine(p0, p1));  //start pose to 1st row
+        path1.setConstantHeadingInterpolation(0);
+        path1.setTimeoutConstraint(2000);
 
-        returnToScore = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(30, -51, 0), new Pose(0, 0, 0)))
-                .setConstantHeadingInterpolation(0)
-                .build();
+        path2 = new Path(new BezierLine(p1, p2));//1st row to back row 1
+        path2.setConstantHeadingInterpolation(0);
+        path2.setTimeoutConstraint(2000);
 
-        driveTo2ndIntake = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(0, 0, 0), new Pose(0, -75, 0)))
-                .setConstantHeadingInterpolation(0)
-                .build();
 
-        returnTo2ndScore = follower.pathBuilder()
-                .addPath(new BezierLine(new Pose(0, -75, 0), new Pose(30, 75, 0)))
-                .setConstantHeadingInterpolation(0)
-                .build();
+        path3 = new Path(new BezierLine(p2, p1));//backrow 1 to front row 1
+        path3.setConstantHeadingInterpolation(0);
+        path3.setTimeoutConstraint(2000);
+
+
+        path4 = new Path(new BezierLine(p1, p0));//backrow 1 to front row 1
+        path4.setConstantHeadingInterpolation(0);
+        path4.setTimeoutConstraint(2000);
+
+
+
+
 
     }
 
@@ -66,7 +73,7 @@ public class FarGoalPedro extends LinearOpMode {
         // Utilize your factory method to create the Follower
         // This links your SwerveDrivetrain and SwerveLocalizer automatically
         follower = SwerveConstants.createFollower(hardwareMap);
-        follower.setStartingPose(startPose);
+
 
         pathTimer = new Timer();
         initMechanisms();
@@ -92,46 +99,36 @@ public class FarGoalPedro extends LinearOpMode {
             telemetry.addData("Y", follower.getPose().getY());
             telemetry.addData("Heading", follower.getPose().getHeading());
             telemetry.update();
-            drawTelemetry();
+            //drawTelemetry();
         }
     }
 
     public void autonomousPathUpdate() {
         switch (pathState) {
-            case 0: // Start with Launch
-              //  adjuster.setPosition(.118);
-               // leftFly.setPower(-0.78);
-               // rightFly.setPower(0.78);
-               // pathTimer.resetTimer();
-              //  if (pathTimer.getElapsedTimeSeconds() > 1.0) {
-                  //  fireThreeTimes();
-                double initialTarget = driveToRight.getPath(0).getHeadingGoal(0);
+            case 0:
 
-                // Cast the drivetrain to your custom class to access the new method
-                ((SwerveDrivetrain) follower.getDrivetrain()).rotatePodsOnly(initialTarget);
+                follower.followPath(path1);
+                setPathState(1); // Move to the state that calls follower.followPath()
 
-                // Wait 0.8 seconds for the servos to finish turning
-                pathTimer.resetTimer();
-                if (pathTimer.getElapsedTimeSeconds() > 0.8) {
-                    follower.followPath(driveToRight);
-                    setPathState(1); // Move to the state that calls follower.followPath()
-                }
-
-              //  }
                 break;
 
-            case 1: // Moving Right 51 inches
+            case 1:
+                //Waiting to complete path 1
+
                 if (!follower.isBusy()) {
-                    frontIntake.setPower(1.0);
-                    follower.followPath(driveToIntake);
+                    //path 1 complete, action:
+                    //frontIntake.setPower(1.0);
+                    follower.followPath(path2);
                     setPathState(2);
                 }
                 break;
 
-            case 2: // Intaking Forward 30 inches
+            case 2:
+                //Waiting for path 2:row1 to end
                 if (!follower.isBusy()) {
-                    frontIntake.setPower(0);
-                    follower.followPath(returnToScore);
+                    //End of path 2, action:
+                    //frontIntake.setPower(0);
+                    follower.followPath(path3);
                     setPathState(3);
                 }
                 break;
@@ -139,21 +136,21 @@ public class FarGoalPedro extends LinearOpMode {
             case 3: // Return & Shutdown
                 if (!follower.isBusy()) {
                     //fireThreeTimes();
-                    follower.followPath(driveTo2ndIntake);
+                    follower.followPath(path4);
                     setPathState(4);
                 }
                 break;
 
             case 4: // Return & Shutdown
                 if (!follower.isBusy()) {
-                    follower.followPath(returnTo2ndScore);
+                    follower.followPath(path5);
                     setPathState(5);
                 }
                 break;
 
             case 5: // Return & Shutdown
                 if (!follower.isBusy()) {
-                    follower.followPath(returnTo2ndScore);
+                    follower.followPath(path6);
                     setPathState(6);
                 }
                 break;

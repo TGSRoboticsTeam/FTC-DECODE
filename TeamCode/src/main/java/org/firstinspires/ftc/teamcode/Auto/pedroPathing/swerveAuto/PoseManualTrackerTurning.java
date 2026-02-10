@@ -5,6 +5,7 @@ import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.bylazar.telemetry.PanelsTelemetry;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
@@ -12,11 +13,10 @@ import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.bylazar.telemetry.PanelsTelemetry;
 
 @Config
-@TeleOp(name = "Cartesian Manual Tracker", group = "Testing")
-public class PoseManualTracker extends OpMode {
+@TeleOp(name = "Cartesian Manual Tracker 2", group = "Testing")
+public class PoseManualTrackerTurning extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
@@ -30,7 +30,7 @@ public class PoseManualTracker extends OpMode {
 
     public static double ROBOT_WIDTH = 18.0;
     public static double ROBOT_LENGTH = 18.0;
-    public static double TARGET_SQUARE_INCHES = 24.0;
+    public static double TARGET_SQUARE_INCHES = 18.0;
     public static double ARRIVAL_TOLERANCE = 0.5; // How close before switching paths
 
     @Override
@@ -49,21 +49,15 @@ public class PoseManualTracker extends OpMode {
         // Define Poses
         Pose p0 = new Pose(0, 0, 0);
         Pose p1 = new Pose(TARGET_SQUARE_INCHES, 0, 0);
-        Pose p2 = new Pose(TARGET_SQUARE_INCHES, TARGET_SQUARE_INCHES, 0);
-        Pose p3 = new Pose(0, TARGET_SQUARE_INCHES, 0);
+
 
         // Build individual paths with locked headings
         side1 = new Path(new BezierLine(p0, p1));
         side1.setConstantHeadingInterpolation(0);
 
-        side2 = new Path(new BezierLine(p1, p2));
-        side2.setConstantHeadingInterpolation(0);
 
-        side3 = new Path(new BezierLine(p2, p3));
-        side3.setConstantHeadingInterpolation(0);
 
-        side4 = new Path(new BezierLine(p3, p0));
-        side4.setConstantHeadingInterpolation(0);
+
 
         pathState = 0;
     }
@@ -82,19 +76,19 @@ public class PoseManualTracker extends OpMode {
                 break;
             case 1: // Waiting to finish Side 1
                 if (!follower.isBusy() || atTarget(currentPose, TARGET_SQUARE_INCHES, 0)) {
-                    follower.followPath(side2);
+                   // follower.followPath(side2);
                     pathState = 2;
                 }
                 break;
             case 2: // Waiting to finish Side 2
                 if (!follower.isBusy() || atTarget(currentPose, TARGET_SQUARE_INCHES, TARGET_SQUARE_INCHES)) {
-                    follower.followPath(side3);
+                   // follower.followPath(side3);
                     pathState = 3;
                 }
                 break;
             case 3: // Waiting to finish Side 3
                 if (!follower.isBusy() || atTarget(currentPose, 0, TARGET_SQUARE_INCHES)) {
-                    follower.followPath(side4);
+                   // follower.followPath(side4);
                     pathState = 4;
                 }
                 break;

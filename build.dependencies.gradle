@@ -7,7 +7,8 @@ repositories {
     maven { url = "https://mymaven.bylazar.com/releases" } // pedropathing tuning
     maven { url = 'https://maven.pedropathing.com' } // isn't this redundant? "well, if it works, DON'T TOUCH IT!"
     maven { url = "https://mymaven.bylazar.com/releases" } // okay, this is definitely redundant...
-    maven { url 'https://jitpack.io' } // Add this line
+    maven { url 'https://jitpack.io' }
+// Add this line
 }
 
 dependencies {
@@ -34,6 +35,8 @@ dependencies {
 
     // pedropathing tuning
     implementation 'com.bylazar:fullpanels:1.0.6'
+    implementation "com.bylazar:telemetry:1.0.3"
+
 
     // amcrobotics
     implementation 'androidx.appcompat:appcompat:1.7.1'

@@ -5,6 +5,7 @@ import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.bylazar.telemetry.PanelsTelemetry;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
@@ -12,11 +13,10 @@ import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.bylazar.telemetry.PanelsTelemetry;
 
 @Config
-@TeleOp(name = "Cartesian Manual Tracker", group = "Testing")
-public class PoseManualTracker extends OpMode {
+@TeleOp(name = "Cartesian Manual Tracker Save Feb6", group = "Testing")
+public class PoseManualTrackerSave extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
