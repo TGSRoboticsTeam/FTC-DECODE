@@ -5,9 +5,9 @@ public class RGB {
     public static final double red = 0.29;
     public static final double orange = 0.323;
     public static final double yellow = .388;
-    public static final double lightGreen = .444;
+    public static final double lime = .444;
     public static final double green = .5;
-    public static final double greenBlue = .555;
+    public static final double cyan = .555;
     public static final double blue = .611;
     public static final double indigo = .666;
     public static final double violet = .722;

@@ -52,6 +52,7 @@ public class SwerveLocalizer implements Localizer {
 
     @Override
     public void update() {
+
         // 1. Bulk read data from the Pinpoint
         odo.update();
 

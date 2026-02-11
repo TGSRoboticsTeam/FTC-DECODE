@@ -44,8 +44,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 
     // --- Steering PID Constants ---
-        public static final double STEER_KP = 0.12;
-        public static final double STEER_DEADBAND = 0.05;
+        public static final double STEER_KP = 1.0;
+        public static final double STEER_DEADBAND = 0.10;
 
 
     // --- Pinpoint Localizer Offsets (in mm) ---
@@ -60,9 +60,11 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
         // --- Follower PID Constants ---
         // Start conservative. Increase P if sluggish, Decrease if oscillating.
-        private static final double TRANS_P = 0.3, TRANS_I = 0.0, TRANS_D = 0.01;
-        private static final double HEAD_P = 2.0, HEAD_I = 0.0, HEAD_D = 0.1;
+        private static final double TRANS_P = 0.5, TRANS_I = 0.0, TRANS_D = 0.01;
+        private static final double HEAD_P = 0.5, HEAD_I = 0.0, HEAD_D = 0.1;
         private static final double DRIVE_P = 0.025, DRIVE_I = 0.0, DRIVE_D = 0.001;
+
+        //changing HEAD_P from 2.0 to 0.5, transP to 0.8 from 0.3
 
         /**
          * Factory method to create a Swerve-compatible Follower.

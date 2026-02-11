@@ -14,7 +14,7 @@ import com.pedropathing.paths.PathChain;
 
 
 @Autonomous(name = "Example Auto", group = "Examples")
-@Disabled
+//@Disabled
 public class ExampleAuto extends OpMode {
 
     private Follower follower;
