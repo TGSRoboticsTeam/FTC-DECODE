@@ -1,11 +1,10 @@
-package org.firstinspires.ftc.teamcode.tutorials;
+package org.firstinspires.ftc.teamcode.Tools;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 
-import org.firstinspires.ftc.teamcode.mechanisms.AprilTagWebcam;
-import org.firstinspires.ftc.teamcode.mechanisms.MecanumDrive;
+import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
+//import org.firstinspires.ftc.teamcode.mechanisms.MecanumDrive;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 @TeleOp
@@ -17,18 +16,18 @@ public class TurretAutoAlignOpModeTutorial extends OpMode {
     // ---------------- used to auto update P and D ---------------------
     double[] stepSizes = {0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000001, 0.0000001};
     // Index to select the current step size from the array.
-    int stepIndex = 4;
+    int stepIndex = 1;
 
 
     @Override
     public void init() {
         aprilTagWebcam.init(hardwareMap, telemetry);
-        turret.init(hardwareMap);
+        turret.init(hardwareMap,telemetry);
         telemetry.addLine("Initialized all mechanisms");
     }
 
     public void start() {
-        turret.resetTimer();
+       // turret.resetTimer();
     }
 
     @Override
@@ -36,7 +35,7 @@ public class TurretAutoAlignOpModeTutorial extends OpMode {
 
         // vision logic
         aprilTagWebcam.update();
-        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);
+        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(21);
 
         turret.update(id20);
 
@@ -48,28 +47,32 @@ public class TurretAutoAlignOpModeTutorial extends OpMode {
 
         // D-pad left/right adjusts the P gain.
         if (gamepad1.dpadLeftWasPressed()) {
-            turret.setkP(turret.getkP() - stepSizes[stepIndex]);
+           // turret.setkP(turret.getkP() - stepSizes[stepIndex]);
         }
         if (gamepad1.dpadRightWasPressed()) {
-            turret.setkP(turret.getkP() + stepSizes[stepIndex]);
+           // turret.setkP(turret.getkP() + stepSizes[stepIndex]);
         }
 
         // D-pad up/down adjusts the D gain.
         if (gamepad1.dpadUpWasPressed()) {
-            turret.setkD(turret.getkD() + stepSizes[stepIndex]);
+           // turret.setkD(turret.getkD() + stepSizes[stepIndex]);
         }
         if (gamepad1.dpadDownWasPressed()) {
-            turret.setkD(turret.getkD() - stepSizes[stepIndex]);
+           // turret.setkD(turret.getkD() - stepSizes[stepIndex]);
         }
 
         if (id20 != null) {
             telemetry.addData("cur ID", aprilTagWebcam);
+            telemetry.addLine("Elevation 20: " + id20.ftcPose.elevation);
         } else {
             telemetry.addLine("No Tag Detected. Stopping Turret Motor");
         }
         telemetry.addLine("-----------------------------");
-        telemetry.addData("Tuning P", "%.7f (D-Pad L/R)", turret.getkP());
-        telemetry.addData("Tuning D", "%.7f (D-Pad U/D)", turret.getkD());
+
+
+
+       // telemetry.addData("Tuning P", "%.7f (D-Pad L/R)", turret.getkP());
+       // telemetry.addData("Tuning D", "%.7f (D-Pad U/D)", turret.getkD());
         telemetry.addData("Step Size", "%.7f (B Button)", stepSizes[stepIndex]);
 
     }

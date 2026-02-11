@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.mechanisms;
+package org.firstinspires.ftc.teamcode.Tools;
 
 import android.util.Size;
 
@@ -40,7 +40,7 @@ public class AprilTagWebcam {
                 .build();
 
         VisionPortal.Builder builder = new VisionPortal.Builder();
-        builder.setCamera(hwMap.get(WebcamName.class, "Webcam 1"));
+        builder.setCamera(hwMap.get(WebcamName.class, "turretCam"));
         builder.setCameraResolution(new Size(640, 480));
         builder.enableLiveView(false); // reduce latency
 
