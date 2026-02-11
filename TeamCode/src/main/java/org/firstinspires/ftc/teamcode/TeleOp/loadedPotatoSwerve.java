@@ -12,7 +12,6 @@ import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.hardware.SwitchableLight;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
@@ -46,15 +45,10 @@ public class loadedPotatoSwerve extends LinearOpMode {
     private double multiplier = 1.0;
 
     /* ===================== SENSORS (BALL DISTANCE) ===================== */
-    private NormalizedColorSensor frontColor, centerColor, backColor; // kept for config compatibility
+    private NormalizedColorSensor frontColor, centerColor, backColor; // config compatibility
     private DistanceSensor frontDist, centerDist, backDist;
 
-    /* ===================== SENSOR LED CONTROL ===================== */
-    private SwitchableLight frontLight, centerLight, backLight;
-    private boolean sensorLightsOn = false;
-
     /* ===================== VOLTAGE COMP (FLYWHEEL) ===================== */
-    // ALWAYS CLAMPED: at REF_VOLTAGE => 100%. Below REF_VOLTAGE => still 100% (no scale up).
     private static final double REF_VOLTAGE = 12.0;
 
     /* ===================== SWERVE CONSTANTS ===================== */
@@ -125,23 +119,25 @@ public class loadedPotatoSwerve extends LinearOpMode {
     private boolean intakeModePrev = false;
 
     /* ===================== LAUNCH FEEDING (TUNING) ===================== */
-    // Change these to tune feeding during launch:
     private static final double FRONT_FEED_POWER = 0.65;
-    private static final double BACK_FEED_POWER  = 0.50; // slower back intake when feeding to center
+    private static final double BACK_FEED_POWER  = 0.50;
 
     // >>>>>>> CHANGE THIS TO ADJUST HOW LONG THE INTAKES FEED INTO THE CENTER <<<<<<<
     private static final long FEED_TO_CENTER_MS = 450;
 
-    /* ===================== SPINUP "OUTWARD BURP" ===================== */
+    /* ===================== OUTWARD BURP (ONLY WHEN LAUNCH STARTS) ===================== */
     private static final double SPINUP_OUTWARD_POWER = 0.250;
-    private static final long SPINUP_OUTWARD_MS = 75;
+    private static final long SPINUP_OUTWARD_MS = 30;
 
     /* ===================== TRIGGER SERVO ===================== */
     final double TRIGGER_FIRE = 0.0;
     final double TRIGGER_HOME = 0.225;
 
-    final long LAUNCH_TRIGGER_HOLD_MS = 275;
+    final long LAUNCH_TRIGGER_HOLD_MS = 290;
     final long TRIGGER_RESET_WAIT_MS = 125;
+
+    // Extra wait BEFORE retrying a shot if center still has ball
+    final long RETRY_EXTRA_WAIT_MS = 200;
 
     /* ===================== LAUNCH TIMING ===================== */
     final long FLYWHEEL_SPINUP_MS = 1000;
@@ -160,10 +156,24 @@ public class loadedPotatoSwerve extends LinearOpMode {
     private static final int MAX_RETRIES_PER_SHOT = 3;
     private int shotRetryCount = 0;
 
-    /* ===================== LAUNCH STATE MACHINE (SIMPLIFIED) ===================== */
+    /* ===================== SNAPSHOT PLANS (captured at A press) ===================== */
+    private boolean planCenterShot = false;
+    private boolean planFrontShot  = false;
+    private boolean planBackShot   = false;
+
+    /* ===================== FLYWHEEL PRE-SPIN TOGGLE (GP1 LEFT TRIGGER TAP) ===================== */
+    private boolean preSpinLatched = false;
+    private boolean ltPrev = false;
+    private long preSpinStartMs = 0;
+
+    /* ===================== SPINUP REMAINING (after BURP) ===================== */
+    private long spinupRemainingMs = 0;
+
+    /* ===================== LAUNCH STATE MACHINE ===================== */
     private enum LaunchState {
         IDLE,
-        SPINUP,
+        BURP,      // outward burp happens HERE (launch start)
+        SPINUP,     // waits remaining spinup time AFTER burp (no burp here)
 
         FIRE_1,
         RESET_AFTER_1,
@@ -197,8 +207,6 @@ public class loadedPotatoSwerve extends LinearOpMode {
             sideSort.setPosition(sideSortPos);
         }
 
-        updateSensorLights(false);
-
         waitForStart();
 
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
@@ -226,10 +234,6 @@ public class loadedPotatoSwerve extends LinearOpMode {
             frontHasBall  = hysteresisBall(frontHasBall,  fCm, FRONT_ON_CM,  FRONT_OFF_CM);
             centerHasBall = hysteresisBall(centerHasBall, cCm, CENTER_ON_CM, CENTER_OFF_CM);
             backHasBall   = hysteresisBall(backHasBall,   bCm, BACK_ON_CM,   BACK_OFF_CM);
-
-            /* ===================== SENSOR LIGHTS ON ONLY WHEN NEEDED ===================== */
-            boolean sensorsNeeded = (launchState != LaunchState.IDLE) || isIntakeOn;
-            updateSensorLights(sensorsNeeded);
 
             /* ===================== DRIVE SPEED MODE ===================== */
             double speedMultiplier = gamepad1.right_bumper ? MAX_SPEED_SLOW : MAX_SPEED_FAST;
@@ -312,6 +316,37 @@ public class loadedPotatoSwerve extends LinearOpMode {
             adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);
             if (adjuster != null) adjuster.setPosition(adjusterPos);
 
+            /* ===================== FLYWHEEL COMMAND ===================== */
+            double vbat = (voltageSensor != null) ? voltageSensor.getVoltage() : Double.NaN;
+            double flyCmd = flywheelCommand(vbat);
+
+            /* ===================== PRE-SPIN TOGGLE (GP1 LEFT TRIGGER TAP) ===================== */
+            boolean ltNow = (gamepad1.left_trigger > 0.5);
+            boolean ltPressedEdge = ltNow && !ltPrev;
+            ltPrev = ltNow;
+
+            if (launchState == LaunchState.IDLE && ltPressedEdge) {
+                preSpinLatched = !preSpinLatched;
+                if (preSpinLatched) {
+                    preSpinStartMs = System.currentTimeMillis();
+                } else {
+                    preSpinStartMs = 0;
+                    if (leftFly != null) leftFly.setPower(0);
+                    if (rightFly != null) rightFly.setPower(0);
+                }
+            }
+
+            if (preSpinLatched && launchState == LaunchState.IDLE) {
+                // Pre-spin ONLY spins flywheels. No outward burp here.
+                if (leftFly != null) leftFly.setPower(flyCmd);
+                if (rightFly != null) rightFly.setPower(flyCmd);
+
+                if (frontIntake != null) frontIntake.setPower(0);
+                if (backIntake != null) backIntake.setPower(0);
+
+                if (trigger != null) trigger.setPosition(TRIGGER_HOME);
+            }
+
             /* ===================== MANUAL INTAKE (when not launching) ===================== */
             if (launchState == LaunchState.IDLE) {
                 boolean intakeToggle = gamepad1.right_trigger > 0.5;
@@ -322,29 +357,50 @@ public class loadedPotatoSwerve extends LinearOpMode {
                 if (modeToggle && !intakeModePrev) intakeModeOne = !intakeModeOne;
                 intakeModePrev = modeToggle;
 
-                if (isIntakeOn) applySmartIntake();
-                else { if (frontIntake != null) frontIntake.setPower(0); if (backIntake != null) backIntake.setPower(0); }
+                // Only apply smart intake if NOT pre-spinning
+                if (!preSpinLatched) {
+                    if (isIntakeOn) applySmartIntake();
+                    else {
+                        if (frontIntake != null) frontIntake.setPower(0);
+                        if (backIntake != null) backIntake.setPower(0);
+                    }
+                }
             }
-
-            /* ===================== FLYWHEEL COMMAND (ALWAYS CLAMPED TO REF) ===================== */
-            double vbat = (voltageSensor != null) ? voltageSensor.getVoltage() : Double.NaN;
-            double flyCmd = flywheelCommand(vbat);
 
             /* ===================== LAUNCH START (GP1 A) ===================== */
             if (launchState == LaunchState.IDLE && gamepad1.a) {
 
-                if (leftFly != null) leftFly.setPower(flyCmd);
-                if (rightFly != null) rightFly.setPower(flyCmd);
+                // Snapshot which balls exist at start
+                planCenterShot = centerHasBall;
+                planFrontShot  = frontHasBall;
+                planBackShot   = backHasBall;
 
-                isIntakeOn = false;
-                if (frontIntake != null) frontIntake.setPower(0);
-                if (backIntake != null) backIntake.setPower(0);
+                boolean anyPlanned = planCenterShot || planFrontShot || planBackShot;
+                if (anyPlanned) {
 
-                if (trigger != null) trigger.setPosition(TRIGGER_HOME);
+                    long now = System.currentTimeMillis();
+                    long preSpinElapsed = (preSpinStartMs > 0) ? (now - preSpinStartMs) : 0;
+                    spinupRemainingMs = Math.max(0, FLYWHEEL_SPINUP_MS - preSpinElapsed);
 
-                shotRetryCount = 0;
-                stateTimer = System.currentTimeMillis();
-                launchState = LaunchState.SPINUP;
+                    // Once launch starts, launch owns flywheels (turn off pre-spin latch)
+                    preSpinLatched = false;
+                    preSpinStartMs = 0;
+
+                    if (leftFly != null) leftFly.setPower(flyCmd);
+                    if (rightFly != null) rightFly.setPower(flyCmd);
+
+                    isIntakeOn = false;
+                    if (frontIntake != null) frontIntake.setPower(0);
+                    if (backIntake != null) backIntake.setPower(0);
+
+                    if (trigger != null) trigger.setPosition(TRIGGER_HOME);
+
+                    shotRetryCount = 0;
+
+                    // ALWAYS start with outward BURP at launch start
+                    stateTimer = now;
+                    launchState = LaunchState.BURP;
+                }
             }
 
             /* ===================== LAUNCH ABORT (GP1 B) ===================== */
@@ -358,26 +414,64 @@ public class loadedPotatoSwerve extends LinearOpMode {
                 case IDLE:
                     break;
 
-                case SPINUP: {
+                case BURP: {
+                    // Outward burp ONLY happens here (launch start)
                     if (leftFly != null) leftFly.setPower(flyCmd);
                     if (rightFly != null) rightFly.setPower(flyCmd);
 
-                    long spinupElapsed = System.currentTimeMillis() - stateTimer;
-                    if (spinupElapsed <= SPINUP_OUTWARD_MS) {
-                        if (frontIntake != null) frontIntake.setPower(-SPINUP_OUTWARD_POWER);
-                        if (backIntake != null) backIntake.setPower(+SPINUP_OUTWARD_POWER);
-                    } else {
-                        if (frontIntake != null) frontIntake.setPower(0);
-                        if (backIntake != null) backIntake.setPower(0);
-                    }
-
                     if (trigger != null) trigger.setPosition(TRIGGER_HOME);
 
-                    if (spinupElapsed >= FLYWHEEL_SPINUP_MS) {
-                        if (trigger != null) trigger.setPosition(TRIGGER_FIRE);
-                        shotRetryCount = 0;
+                    if (frontIntake != null) frontIntake.setPower(-SPINUP_OUTWARD_POWER);
+                    if (backIntake != null) backIntake.setPower(+SPINUP_OUTWARD_POWER);
+
+                    if (System.currentTimeMillis() - stateTimer >= SPINUP_OUTWARD_MS) {
+                        if (frontIntake != null) frontIntake.setPower(0);
+                        if (backIntake != null) backIntake.setPower(0);
+
                         stateTimer = System.currentTimeMillis();
-                        launchState = LaunchState.FIRE_1;
+
+                        if (spinupRemainingMs > 0) {
+                            launchState = LaunchState.SPINUP;
+                        } else {
+                            if (planCenterShot) {
+                                if (trigger != null) trigger.setPosition(TRIGGER_FIRE);
+                                shotRetryCount = 0;
+                                launchState = LaunchState.FIRE_1;
+                            } else if (planFrontShot) {
+                                launchState = LaunchState.FEED_2;
+                            } else if (planBackShot) {
+                                launchState = LaunchState.FEED_3;
+                            } else {
+                                launchState = LaunchState.SPINDOWN;
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case SPINUP: {
+                    // Wait remaining spinup time (NO BURP HERE)
+                    if (leftFly != null) leftFly.setPower(flyCmd);
+                    if (rightFly != null) rightFly.setPower(flyCmd);
+
+                    if (frontIntake != null) frontIntake.setPower(0);
+                    if (backIntake != null) backIntake.setPower(0);
+                    if (trigger != null) trigger.setPosition(TRIGGER_HOME);
+
+                    if (System.currentTimeMillis() - stateTimer >= spinupRemainingMs) {
+                        stateTimer = System.currentTimeMillis();
+
+                        if (planCenterShot) {
+                            if (trigger != null) trigger.setPosition(TRIGGER_FIRE);
+                            shotRetryCount = 0;
+                            launchState = LaunchState.FIRE_1;
+                        } else if (planFrontShot) {
+                            launchState = LaunchState.FEED_2;
+                        } else if (planBackShot) {
+                            launchState = LaunchState.FEED_3;
+                        } else {
+                            launchState = LaunchState.SPINDOWN;
+                        }
                     }
                     break;
                 }
@@ -388,8 +482,11 @@ public class loadedPotatoSwerve extends LinearOpMode {
 
                 case RESET_AFTER_1:
                     if (retryIfCenterStillHasBall(LaunchState.FIRE_1, flyCmd)) break;
+
                     stateTimer = System.currentTimeMillis();
-                    launchState = LaunchState.FEED_2;
+                    if (planFrontShot) launchState = LaunchState.FEED_2;
+                    else if (planBackShot) launchState = LaunchState.FEED_3;
+                    else launchState = LaunchState.SPINDOWN;
                     break;
 
                 case FEED_2:
@@ -417,8 +514,10 @@ public class loadedPotatoSwerve extends LinearOpMode {
 
                 case RESET_AFTER_2:
                     if (retryIfCenterStillHasBall(LaunchState.FIRE_2, flyCmd)) break;
+
                     stateTimer = System.currentTimeMillis();
-                    launchState = LaunchState.FEED_3;
+                    if (planBackShot) launchState = LaunchState.FEED_3;
+                    else launchState = LaunchState.SPINDOWN;
                     break;
 
                 case FEED_3:
@@ -426,7 +525,7 @@ public class loadedPotatoSwerve extends LinearOpMode {
                     if (rightFly != null) rightFly.setPower(flyCmd);
                     if (trigger != null) trigger.setPosition(TRIGGER_HOME);
 
-                    if (backIntake != null) backIntake.setPower(-BACK_FEED_POWER); // slower back feed
+                    if (backIntake != null) backIntake.setPower(-BACK_FEED_POWER);
                     if (frontIntake != null) frontIntake.setPower(0);
 
                     if (System.currentTimeMillis() - stateTimer >= FEED_TO_CENTER_MS) {
@@ -470,15 +569,20 @@ public class loadedPotatoSwerve extends LinearOpMode {
                         if (leftFly != null) leftFly.setPower(0);
                         if (rightFly != null) rightFly.setPower(0);
                         launchState = LaunchState.IDLE;
+
+                        spinupRemainingMs = 0;
                     }
                     break;
             }
 
             /* ===================== TELEMETRY ===================== */
             telemetry.addData("VBatt", Double.isNaN(vbat) ? "?" : String.format("%.2fV", vbat));
-            telemetry.addData("RefV", "%.2fV", REF_VOLTAGE);
-            telemetry.addData("Multiplier", "%.2f", multiplier);
             telemetry.addData("FlyCmd", "%.3f", flyCmd);
+            telemetry.addData("Multiplier", "%.2f", multiplier);
+
+            telemetry.addData("PreSpinLatched", preSpinLatched);
+            telemetry.addData("PreSpinMs", preSpinStartMs == 0 ? 0 : (System.currentTimeMillis() - preSpinStartMs));
+            telemetry.addData("SpinupRemainingMs", spinupRemainingMs);
 
             telemetry.addData("Dist Front (cm)", "%.1f", fCm);
             telemetry.addData("Dist Center (cm)", "%.1f", cCm);
@@ -488,8 +592,10 @@ public class loadedPotatoSwerve extends LinearOpMode {
             telemetry.addData("CenterBall", centerHasBall);
             telemetry.addData("BackBall", backHasBall);
 
-            telemetry.addData("LEDs", sensorLightsOn ? "ON" : "OFF");
-            telemetry.addData("SideSort", (sideSortPos == SIDE_SORT_CENTERED) ? "CENTERED" : "STOWED");
+            telemetry.addData("PLAN Center", planCenterShot);
+            telemetry.addData("PLAN Front", planFrontShot);
+            telemetry.addData("PLAN Back", planBackShot);
+
             telemetry.addData("LaunchState", launchState);
             telemetry.addData("ShotRetry", "%d/%d", shotRetryCount, MAX_RETRIES_PER_SHOT);
             telemetry.addData("FeedMS", FEED_TO_CENTER_MS);
@@ -523,9 +629,12 @@ public class loadedPotatoSwerve extends LinearOpMode {
         if (backIntake != null) backIntake.setPower(0);
         if (trigger != null) trigger.setPosition(TRIGGER_HOME);
 
-        if (System.currentTimeMillis() - stateTimer < TRIGGER_RESET_WAIT_MS) return true;
+        long elapsed = System.currentTimeMillis() - stateTimer;
+        if (elapsed < TRIGGER_RESET_WAIT_MS) return true;
 
         if (centerHasBall) {
+            if (elapsed < (TRIGGER_RESET_WAIT_MS + RETRY_EXTRA_WAIT_MS)) return true;
+
             if (shotRetryCount >= MAX_RETRIES_PER_SHOT) {
                 abortLaunch();
                 return true;
@@ -550,19 +659,6 @@ public class loadedPotatoSwerve extends LinearOpMode {
         else base = REF_VOLTAGE / vbat;
 
         return clamp(multiplier * base, 0.0, 1.0);
-    }
-
-    /* ===================== SENSOR LIGHT HELPERS ===================== */
-    private void updateSensorLights(boolean shouldBeOn) {
-        if (shouldBeOn == sensorLightsOn) return;
-        sensorLightsOn = shouldBeOn;
-        setLight(frontLight, shouldBeOn);
-        setLight(centerLight, shouldBeOn);
-        setLight(backLight, shouldBeOn);
-    }
-
-    private void setLight(SwitchableLight light, boolean on) {
-        if (light != null) light.enableLight(on);
     }
 
     /* ===================== SMART INTAKE LOGIC ===================== */
@@ -610,7 +706,14 @@ public class loadedPotatoSwerve extends LinearOpMode {
         shotRetryCount = 0;
         launchState = LaunchState.IDLE;
 
-        updateSensorLights(false);
+        planCenterShot = false;
+        planFrontShot = false;
+        planBackShot = false;
+
+        preSpinLatched = false;
+        preSpinStartMs = 0;
+        spinupRemainingMs = 0;
+        ltPrev = false;
     }
 
     /* ===================== DISTANCE HELPERS ===================== */
@@ -720,10 +823,8 @@ public class loadedPotatoSwerve extends LinearOpMode {
 
         trigger  = hardwareMap.get(Servo.class, "trigger");
         adjuster = hardwareMap.get(Servo.class, "adjuster");
-
         sideSort = hardwareMap.get(Servo.class, "side_sort");
 
-        // Sensors: use RevColorSensorV3 so SwitchableLight works
         try {
             RevColorSensorV3 f = hardwareMap.get(RevColorSensorV3.class, "frontColor");
             RevColorSensorV3 c = hardwareMap.get(RevColorSensorV3.class, "centerColor");
@@ -737,10 +838,6 @@ public class loadedPotatoSwerve extends LinearOpMode {
             centerDist = c;
             backDist   = b;
 
-            frontLight  = (f instanceof SwitchableLight) ? (SwitchableLight) f : null;
-            centerLight = (c instanceof SwitchableLight) ? (SwitchableLight) c : null;
-            backLight   = (b instanceof SwitchableLight) ? (SwitchableLight) b : null;
-
         } catch (Exception e) {
             frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
             centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");
@@ -749,10 +846,6 @@ public class loadedPotatoSwerve extends LinearOpMode {
             frontDist  = hardwareMap.get(DistanceSensor.class, "frontColor");
             centerDist = hardwareMap.get(DistanceSensor.class, "centerColor");
             backDist   = hardwareMap.get(DistanceSensor.class, "backColor");
-
-            frontLight  = (frontColor  instanceof SwitchableLight) ? (SwitchableLight) frontColor  : null;
-            centerLight = (centerColor instanceof SwitchableLight) ? (SwitchableLight) centerColor : null;
-            backLight   = (backColor   instanceof SwitchableLight) ? (SwitchableLight) backColor   : null;
         }
     }
 }
