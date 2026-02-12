@@ -41,7 +41,7 @@ public class TurretMechanismTutorial {
         currentServoPos = 0.5;
         setServos(currentServoPos);
     }
-    double scroll = 0;
+    double scroll = 0.5;
     double scrollIncrement = 0.001;
     public void update(AprilTagDetection curID) {
         // Safety: If no tag is seen, do nothing (or return to center if preferred)
@@ -55,9 +55,11 @@ public class TurretMechanismTutorial {
             scroll += scrollIncrement;
             telemetry.addLine("No Tag Detected. Stopping Turret Motor: "+scroll);
             setServos(scroll);
-            return;
+
+
         }
         else {
+            scrollIncrement=0.00025;
             // 1. Calculate Error
             // AprilTags give 'bearing' in degrees.
             // If bearing is positive (left), we might need to increase position.
@@ -68,21 +70,28 @@ public class TurretMechanismTutorial {
             // 2. Deadzone check
             // If we are close enough, stop updating to prevent buzzing
             if (Math.abs(error) < angleTolerance) {
+                scroll = currentServoPos;
+                scrollIncrement = 0.00;
                 lights.setPosition(RGB.green);
-                return;
+
             }
             lights.setPosition(RGB.yellow);
             // 3. Calculate "Step" (Proportional control on the RATE of change)
             // Large error = large step; Small error = small step
-            double step = error/12;
-           // double step = 0.0001;
-            // 4. Update Position
-            scroll = currentServoPos;
-            currentServoPos += step;
+           // double step = error*kP;
 
-            // 5. Safety Clamp
-            // Keep the signal within the valid 0.0 to 1.0 range
-            currentServoPos = Range.clip(currentServoPos, 0.0, 1.0);
+            // 4. Update Position
+
+            if(scroll <=0.1 && scrollIncrement<0){
+                scrollIncrement = -1*scrollIncrement;
+            }
+            if(scroll >=0.9 && scrollIncrement>0){
+                scrollIncrement = -1*scrollIncrement;
+            }
+            scroll += scrollIncrement;
+
+            telemetry.addLine("Zeroing in:: "+scroll);
+            setServos(scroll);
 
             telemetry.addLine("Current Servo Pos: " + currentServoPos);
             telemetry.addLine("Error: " + error);

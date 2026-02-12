@@ -35,7 +35,7 @@ public class TurretAutoAlignOpModeTutorial extends OpMode {
 
         // vision logic
         aprilTagWebcam.update();
-        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(21);
+        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(24);
 
         turret.update(id20);
 

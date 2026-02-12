@@ -130,7 +130,7 @@ public class SwerveDrivetrain extends Drivetrain {
     public void runDrive(double[] drivePowers) {
         // Voltage Compensation
         double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
-        multiplier *= maxPowerScaling/2;
+        multiplier *= maxPowerScaling;
 
         // Apply control to each module
         runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, drivePowers[0] * multiplier, targetAngles[0]);

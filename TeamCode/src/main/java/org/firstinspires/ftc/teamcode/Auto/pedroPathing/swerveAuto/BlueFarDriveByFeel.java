@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 
-import static java.lang.Thread.sleep;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
@@ -13,17 +11,16 @@ import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
-import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
-
 @Config
-@Autonomous(name = "BlueFarGoal Feb6", group = "Testing")
-public class BlueFarTuned extends OpMode {
+@Disabled
+@Autonomous(name = "BlueFarGoalFEEL", group = "Testing")
+public class BlueFarDriveByFeel extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
@@ -89,12 +86,12 @@ public class BlueFarTuned extends OpMode {
 
         // Define Poses
         p0 = new Pose(0, 9, 0);
-        p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
-        p2 = new Pose(30,-TARGET_TILE_INCHES , 0); //Through row 1
-        p3 = new Pose(0, -TARGET_TILE_INCHES*2, 0); //Front row 2
-        p4 = new Pose(30, -TARGET_TILE_INCHES*2, 0);   //Through row 2
-        p5 = new Pose(0, -TARGET_TILE_INCHES*3, 0); //Front row 3
-        p6 = new Pose(30, -TARGET_TILE_INCHES*3, 0);//Through row 3
+        p1 = new Pose(0, -TARGET_TILE_INCHES*1.5-12, 0);//In front of row 1
+        p2 = new Pose(30,-TARGET_TILE_INCHES*1.5-12 , 0); //Through row 1
+        p3 = new Pose(0, -TARGET_TILE_INCHES*2.5-12, 0); //Front row 2
+        p4 = new Pose(30, -TARGET_TILE_INCHES*2.5-12, 0);   //Through row 2
+        p5 = new Pose(0, -TARGET_TILE_INCHES*3.5-12, 0); //Front row 3
+        p6 = new Pose(30, -TARGET_TILE_INCHES*3.5-12, 0);//Through row 3
 
 
         // Build individual paths with locked headings
@@ -139,6 +136,7 @@ public class BlueFarTuned extends OpMode {
 
                 break;
             case 1: // Waiting to finish Side 1
+
                 if (!follower.isBusy() ) {
                     lights.setPosition(RGB.cyan);
 
@@ -180,15 +178,14 @@ public class BlueFarTuned extends OpMode {
                 }
                 break;
             case 4: // Waiting to finish Side 4
-
+                turnOnFlys(.875);
+                try {
+                    Thread.sleep(800);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                fireThreeTimes();
                 if (!follower.isBusy()) {
-                    turnOnFlys(.875);
-                    try {
-                        Thread.sleep(800);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                    fireThreeTimes();
                     lights.setPosition(RGB.violet);
 
                     side5 = new Path(new BezierLine(p0, p3));
