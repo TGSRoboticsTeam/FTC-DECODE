@@ -49,7 +49,7 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     private double sideSortPos = SIDE_SORT_CENTERED;
     private boolean sideSortTogglePrev = false;
 
-    /* ===================== MULTIPLIER (GP2 DPAD UP/DOWN) ===================== */
+    /* ===================== MULTIPLIER (AUTO FROM CAMERA) ===================== */
     private double multiplier = 1.0;
 
     /* ===================== SENSORS (BALL DISTANCE) ===================== */
@@ -92,18 +92,11 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     private double currentTurretRotation = 0.5;
     private boolean turretCenterPrev = false;
 
-    /* ===================== ADJUSTER CONTROL (GP2 LSY, slow with GP2 RB) ===================== */
+    /* ===================== ADJUSTER LIMITS (AUTO POS FROM TABLE) ===================== */
     final double ADJUSTER_MIN = 0.0;   // up
     final double ADJUSTER_MAX = 0.75;  // top
-    final double ADJUSTER_DEADBAND = 0.05;
 
-    final double ADJUSTER_RATE_FAST = 0.050;
-    final double ADJUSTER_RATE_SLOW = 0.015;
-
-    final double CLOSE_ADJUSTER = 0.433;
-    final double FAR_ADJUSTER = 0.118;
-
-    private double adjusterPos = CLOSE_ADJUSTER;
+    private double adjusterPos = 0.4482;
 
     /* ===================== INTAKES (BASE 90%, SCALED SLOWS) ===================== */
     final double INTAKE_BASE = 0.90;
@@ -204,6 +197,18 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
 
+    // ===================== UPDATED AUTO FIT FROM TABLE (distance inches -> multiplier) =====================
+    // From updated table:
+    // multiplier(d) = AUTO_M * d + AUTO_B
+    // AUTO_M stays the same; AUTO_B increased by +0.01
+    private static final double AUTO_M = 0.0022636364;
+    private static final double AUTO_B = 0.5415909091;
+    private static final double AUTO_ADJUSTER_POS = 0.4482;
+
+    // Hold-last behavior when tag not visible
+    private double lastKnownMultiplier = 0.66;              // close to your mid table
+    private double lastKnownAdjusterPos = AUTO_ADJUSTER_POS;
+
     private void initTurretCamAprilTags() {
         aprilTag = new AprilTagProcessor.Builder()
                 .setDrawAxes(false)
@@ -217,32 +222,25 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
                 .build();
     }
 
-    private void telemetryTag24Distance() {
-        if (aprilTag == null) return;
+    private double getTag24RangeInches() {
+        if (aprilTag == null) return Double.NaN;
 
         List<AprilTagDetection> detections = aprilTag.getDetections();
-
-        AprilTagDetection tag24 = null;
         for (AprilTagDetection d : detections) {
-            if (d != null && d.id == 24) {
-                tag24 = d;
-                break;
+            if (d != null && d.id == 24 && d.ftcPose != null) {
+                return d.ftcPose.range; // inches
             }
         }
+        return Double.NaN;
+    }
 
-        if (tag24 == null) {
+    private void telemetryTag24Distance(double tagRangeIn) {
+        if (Double.isNaN(tagRangeIn)) {
             telemetry.addLine("Tag 24: NOT VISIBLE");
-            return;
+        } else {
+            telemetry.addLine("Tag 24: FOUND");
+            telemetry.addData("Tag24 Dist (in)", "%.2f", tagRangeIn);
         }
-
-        if (tag24.ftcPose == null) {
-            telemetry.addLine("Tag 24: VISIBLE (no pose)");
-            return;
-        }
-
-        // ftcPose.range is inches in the FTC AprilTag pipeline
-        telemetry.addLine("Tag 24: FOUND");
-        telemetry.addData("Tag24 Dist (in)", "%.2f", tag24.ftcPose.range);
     }
 
     @Override
@@ -251,9 +249,13 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
         initHardware();
         initTurretCamAprilTags();
 
+        // Initialize servos
         if (trigger != null) trigger.setPosition(TRIGGER_HOME);
         if (turretRotation1 != null) turretRotation1.setPosition(currentTurretRotation);
         if (turretRotation2 != null) turretRotation2.setPosition(1.0 - currentTurretRotation);
+
+        // Initialize adjuster to last known / default
+        adjusterPos = lastKnownAdjusterPos;
         if (adjuster != null) adjuster.setPosition(adjusterPos);
 
         if (sideSort != null) {
@@ -266,11 +268,6 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
         double targetAngleFL = 0, targetAngleFR = 0, targetAngleBL = 0, targetAngleBR = 0;
 
         while (opModeIsActive()) {
-
-            /* ===================== MULTIPLIER (GP2 DPAD UP/DOWN) ===================== */
-            if (gamepad2.dpad_up) multiplier += 0.01;
-            if (gamepad2.dpad_down) multiplier -= 0.01;
-            multiplier = clamp(multiplier, 0.0, 1.0);
 
             /* ===================== SIDE SORT TOGGLE (GP2 X) ===================== */
             boolean sideSortToggle = gamepad2.x;
@@ -362,13 +359,24 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
             if (turretRotation1 != null) turretRotation1.setPosition(currentTurretRotation);
             if (turretRotation2 != null) turretRotation2.setPosition(1.0 - currentTurretRotation);
 
-            /* ===================== ADJUSTER (GP2 LSY, slow with GP2 RB) ===================== */
-            double adjInput = gamepad2.left_stick_y;
-            if (Math.abs(adjInput) < ADJUSTER_DEADBAND) adjInput = 0;
+            /* ===================== AUTO MULTIPLIER + ADJUSTER FROM CAMERA (Tag 24) ===================== */
+            double tagRangeIn = getTag24RangeInches();
+            boolean tagVisible = !Double.isNaN(tagRangeIn);
 
-            double adjRate = gamepad2.right_bumper ? ADJUSTER_RATE_SLOW : ADJUSTER_RATE_FAST;
-            adjusterPos = clamp(adjusterPos + adjInput * adjRate, ADJUSTER_MIN, ADJUSTER_MAX);
-            if (adjuster != null) adjuster.setPosition(adjusterPos);
+            if (tagVisible) {
+                multiplier = clamp(AUTO_M * tagRangeIn + AUTO_B, 0.0, 1.0);
+                adjusterPos = clamp(AUTO_ADJUSTER_POS, ADJUSTER_MIN, ADJUSTER_MAX);
+
+                lastKnownMultiplier = multiplier;
+                lastKnownAdjusterPos = adjusterPos;
+
+                if (adjuster != null) adjuster.setPosition(adjusterPos);
+            } else {
+                multiplier = clamp(lastKnownMultiplier, 0.0, 1.0);
+                adjusterPos = clamp(lastKnownAdjusterPos, ADJUSTER_MIN, ADJUSTER_MAX);
+
+                if (adjuster != null) adjuster.setPosition(adjusterPos);
+            }
 
             /* ===================== FLYWHEEL COMMAND ===================== */
             double vbat = (voltageSensor != null) ? voltageSensor.getVoltage() : Double.NaN;
@@ -424,7 +432,7 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
             /* ===================== LAUNCH START (GP1 A) ===================== */
             if (launchState == LaunchState.IDLE && gamepad1.a) {
 
-                // Snapshot which balls exist at start
+                // Snapshot which balls exist at start (BEFORE BURP)
                 planCenterShot = centerHasBall;
                 planFrontShot  = frontHasBall;
                 planBackShot   = backHasBall;
@@ -632,38 +640,38 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
             /* ===================== TELEMETRY ===================== */
             telemetry.addData("VBatt", Double.isNaN(vbat) ? "?" : String.format("%.2fV", vbat));
             telemetry.addData("FlyCmd", "%.3f", flyCmd);
-            telemetry.addData("Multiplier", "%.2f", multiplier);
 
-            //telemetry.addData("PreSpinLatched", preSpinLatched);
-            //telemetry.addData("PreSpinMs", preSpinStartMs == 0 ? 0 : (System.currentTimeMillis() - preSpinStartMs));
-           // telemetry.addData("SpinupRemainingMs", spinupRemainingMs);
+            telemetry.addData("AutoMult", "%.3f", multiplier);
+            telemetry.addData("AutoAdj", "%.4f", adjusterPos);
+            telemetry.addData("LastMult", "%.3f", lastKnownMultiplier);
 
-          //  telemetry.addData("Dist Front (cm)", "%.1f", fCm);
-          //  telemetry.addData("Dist Center (cm)", "%.1f", cCm);
-            //telemetry.addData("Dist Back (cm)", "%.1f", bCm);
+            telemetry.addData("PreSpinLatched", preSpinLatched);
+            telemetry.addData("PreSpinMs", preSpinStartMs == 0 ? 0 : (System.currentTimeMillis() - preSpinStartMs));
+            telemetry.addData("SpinupRemainingMs", spinupRemainingMs);
 
-       //     telemetry.addData("FrontBall", frontHasBall);
-       //     telemetry.addData("CenterBall", centerHasBall);
-      //      telemetry.addData("BackBall", backHasBall);
+            telemetry.addData("Dist Front (cm)", "%.1f", fCm);
+            telemetry.addData("Dist Center (cm)", "%.1f", cCm);
+            telemetry.addData("Dist Back (cm)", "%.1f", bCm);
 
-         //   telemetry.addData("PLAN Center", planCenterShot);
-          //  telemetry.addData("PLAN Front", planFrontShot);
-           // telemetry.addData("PLAN Back", planBackShot);
+            telemetry.addData("FrontBall", frontHasBall);
+            telemetry.addData("CenterBall", centerHasBall);
+            telemetry.addData("BackBall", backHasBall);
 
-          //  telemetry.addData("LaunchState", launchState);
-           // telemetry.addData("ShotRetry", "%d/%d", shotRetryCount, MAX_RETRIES_PER_SHOT);
-          //  telemetry.addData("FeedMS", FEED_TO_CENTER_MS);
-           // telemetry.addData("FrontFeedPwr", "%.2f", FRONT_FEED_POWER);
-          //  telemetry.addData("BackFeedPwr", "%.2f", BACK_FEED_POWER);
-            telemetry.addData("AdjusterPos",adjusterPos);
+            telemetry.addData("PLAN Center", planCenterShot);
+            telemetry.addData("PLAN Front", planFrontShot);
+            telemetry.addData("PLAN Back", planBackShot);
 
-            // AprilTag distance to ID 24
-            telemetryTag24Distance();
+            telemetry.addData("LaunchState", launchState);
+            telemetry.addData("ShotRetry", "%d/%d", shotRetryCount, MAX_RETRIES_PER_SHOT);
+            telemetry.addData("FeedMS", FEED_TO_CENTER_MS);
+            telemetry.addData("FrontFeedPwr", "%.2f", FRONT_FEED_POWER);
+            telemetry.addData("BackFeedPwr", "%.2f", BACK_FEED_POWER);
+
+            telemetryTag24Distance(tagRangeIn);
 
             telemetry.update();
         }
 
-        // Clean shutdown of camera pipeline
         if (visionPortal != null) {
             visionPortal.close();
         }
@@ -727,17 +735,19 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     /* ===================== SMART INTAKE LOGIC ===================== */
     private void applySmartIntake() {
         DcMotor fastMotor, slowMotor;
-        boolean fastBall, slowBall;
 
         double dir = intakeModeOne ? +1.0 : -1.0;
 
         if (intakeModeOne) {
-            fastMotor = frontIntake;  fastBall = frontHasBall;
-            slowMotor = backIntake;   slowBall = backHasBall;
+            fastMotor = frontIntake;
+            slowMotor = backIntake;
         } else {
-            fastMotor = backIntake;   fastBall = backHasBall;
-            slowMotor = frontIntake;  slowBall = frontHasBall;
+            fastMotor = backIntake;
+            slowMotor = frontIntake;
         }
+
+        boolean fastBall = intakeModeOne ? frontHasBall : backHasBall;
+        boolean slowBall = intakeModeOne ? backHasBall : frontHasBall;
 
         double slowPower = slowBall ? 0.0 : (dir * MANUAL_SLOW);
 
