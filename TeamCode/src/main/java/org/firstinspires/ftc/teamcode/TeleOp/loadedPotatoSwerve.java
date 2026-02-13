@@ -741,6 +741,8 @@ public class loadedPotatoSwerve extends LinearOpMode {
             centerLight = (c instanceof SwitchableLight) ? (SwitchableLight) c : null;
             backLight   = (b instanceof SwitchableLight) ? (SwitchableLight) b : null;
 
+
+
         } catch (Exception e) {
             frontColor  = hardwareMap.get(NormalizedColorSensor.class, "frontColor");
             centerColor = hardwareMap.get(NormalizedColorSensor.class, "centerColor");

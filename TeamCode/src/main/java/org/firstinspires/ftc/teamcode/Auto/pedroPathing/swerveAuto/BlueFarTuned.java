@@ -134,6 +134,7 @@ public class BlueFarTuned extends OpMode {
     @Override
     public void loop() {
         follower.update();
+
         Pose currentPose = follower.getPose();
 
         // --- CARTESIAN STATE MACHINE ---
