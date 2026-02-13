@@ -60,6 +60,24 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     /* ===================== VOLTAGE COMP (FLYWHEEL) ===================== */
     private static final double REF_VOLTAGE = 12.0;
 
+    /* ===================== VOLTAGE COMP (INTAKES) ===================== */
+    private static final double INTAKE_REF_VOLTAGE = 10.0;
+
+    /**
+     * Returns a multiplier that makes intakes behave like "power = 1.0 at 9V".
+     * - If Vbat > 9V, scales DOWN (ex: 12V -> 0.75)
+     * - If Vbat < 9V, would scale UP, but we CLAMP to 1.0 (can't exceed 100%).
+     */
+    private double intakeVoltageScale(double vbat) {
+        if (Double.isNaN(vbat) || Double.isInfinite(vbat) || vbat <= 0.5) return 1.0;
+        return clamp(INTAKE_REF_VOLTAGE / vbat, 0.0, 1.0);
+    }
+
+    /** Apply intake voltage scaling to any desired intake power. */
+    private double intakeCommand(double desiredPower, double vbat) {
+        return clamp(desiredPower * intakeVoltageScale(vbat), -1.0, 1.0);
+    }
+
     /* ===================== SWERVE CONSTANTS ===================== */
     final double TRACK_WIDTH = 17.258;
     final double WHEELBASE   = 13.544;
@@ -104,7 +122,7 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
 
     final double INTAKE_SLOW_RATIO = 0.30;
     final double FAST_AFTER_SLOW_RATIO = 0.70;
-    final double FAST_AFTER_SLOW_AND_CENTER_RATIO = 0.55;
+    final double FAST_AFTER_SLOW_AND_CENTER_RATIO = 0.625;
 
     final double MANUAL_FAST = INTAKE_BASE;
     final double MANUAL_SLOW = INTAKE_BASE * INTAKE_SLOW_RATIO;
@@ -130,7 +148,7 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     private static final long FEED_TO_CENTER_MS = 450;
 
     /* ===================== OUTWARD BURP (ONLY WHEN LAUNCH STARTS) ===================== */
-    private static final double SPINUP_OUTWARD_POWER = 0.250;
+    private static final double SPINUP_OUTWARD_POWER = 0.3;
     private static final long SPINUP_OUTWARD_MS = 30;
 
     /* ===================== TRIGGER SERVO ===================== */
@@ -201,9 +219,6 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     private AprilTagProcessor aprilTag;
 
     // ===================== UPDATED AUTO FIT FROM TABLE (distance inches -> multiplier) =====================
-    // From updated table:
-    // multiplier(d) = AUTO_M * d + AUTO_B
-    // AUTO_M stays the same; AUTO_B increased by +0.01
     private static final double AUTO_M = 0.0022636364;
     private static final double AUTO_B = 0.5415909091;
     private static final double AUTO_ADJUSTER_POS = 0.4482;
@@ -301,30 +316,22 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
             }
             dpadUpPrev = dpadUpNow;
 
-            /* ===================== DRIVE INPUTS (robot-centric) ===================== */
-
-
+            /* ===================== DRIVE INPUTS (field-centric) ===================== */
             double fieldY = -gamepad1.left_stick_y * speedMultiplier; // forward
             double fieldX =  gamepad1.left_stick_x * speedMultiplier; // strafe
-            double rot    =  gamepad1.right_stick_x * speedMultiplier; // rotation (robot frame)
+            double rot    =  gamepad1.right_stick_x * speedMultiplier; // rotation
 
             // IMU heading (robot yaw)
             double rawHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-            double rawPitch= imu.getRobotYawPitchRollAngles().getPitch(AngleUnit.RADIANS);
-            double rawRoll = imu.getRobotYawPitchRollAngles().getRoll(AngleUnit.RADIANS);
 
-            double botHeading = wrapAngle(rawHeading );
+            double botHeading = wrapAngle(rawHeading);
 
             // Convert field -> robot (rotate by -heading)
-            // Matches your mecanum example:
-            //   strafe = x*cos(-h) - y*sin(-h)
-            //   drive  = x*sin(-h) + y*cos(-h)
             double robotX = fieldX * Math.cos(-botHeading) - fieldY * Math.sin(-botHeading);
             double robotY = fieldX * Math.sin(-botHeading) + fieldY * Math.cos(-botHeading);
 
-            boolean invertRobotX =false; // <--- MOST COMMON FIX WHEN FIELD STRAFE IS “BACKWARDS”
+            boolean invertRobotX = false;
             if (invertRobotX) robotX = -robotX;
-
 
             double A = robotX - rot * (WHEELBASE / R);
             double B = robotX + rot * (WHEELBASE / R);
@@ -453,7 +460,7 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
 
                 // Only apply smart intake if NOT pre-spinning
                 if (!preSpinLatched) {
-                    if (isIntakeOn) applySmartIntake();
+                    if (isIntakeOn) applySmartIntake(vbat);
                     else {
                         if (frontIntake != null) frontIntake.setPower(0);
                         if (backIntake != null) backIntake.setPower(0);
@@ -515,8 +522,9 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
 
                     if (trigger != null) trigger.setPosition(TRIGGER_HOME);
 
-                    if (frontIntake != null) frontIntake.setPower(-SPINUP_OUTWARD_POWER);
-                    if (backIntake != null) backIntake.setPower(+SPINUP_OUTWARD_POWER);
+                    // Voltage-compensated burp (9V reference, clamped)
+                    if (frontIntake != null) frontIntake.setPower(intakeCommand(-SPINUP_OUTWARD_POWER, vbat));
+                    if (backIntake != null)  backIntake.setPower(intakeCommand(+SPINUP_OUTWARD_POWER, vbat));
 
                     if (System.currentTimeMillis() - stateTimer >= SPINUP_OUTWARD_MS) {
                         if (frontIntake != null) frontIntake.setPower(0);
@@ -588,7 +596,8 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
                     if (rightFly != null) rightFly.setPower(flyCmd);
                     if (trigger != null) trigger.setPosition(TRIGGER_HOME);
 
-                    if (frontIntake != null) frontIntake.setPower(+FRONT_FEED_POWER);
+                    // Voltage-compensated feed
+                    if (frontIntake != null) frontIntake.setPower(intakeCommand(+FRONT_FEED_POWER, vbat));
                     if (backIntake != null) backIntake.setPower(0);
 
                     if (System.currentTimeMillis() - stateTimer >= FEED_TO_CENTER_MS) {
@@ -619,7 +628,8 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
                     if (rightFly != null) rightFly.setPower(flyCmd);
                     if (trigger != null) trigger.setPosition(TRIGGER_HOME);
 
-                    if (backIntake != null) backIntake.setPower(-BACK_FEED_POWER);
+                    // Voltage-compensated feed
+                    if (backIntake != null) backIntake.setPower(intakeCommand(-BACK_FEED_POWER, vbat));
                     if (frontIntake != null) frontIntake.setPower(0);
 
                     if (System.currentTimeMillis() - stateTimer >= FEED_TO_CENTER_MS) {
@@ -670,39 +680,8 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
             }
 
             /* ===================== TELEMETRY ===================== */
-           /* telemetry.addData("VBatt", Double.isNaN(vbat) ? "?" : String.format("%.2fV", vbat));
-            telemetry.addData("FlyCmd", "%.3f", flyCmd);
-
-            telemetry.addData("AutoMult", "%.3f", multiplier);
-            telemetry.addData("AutoAdj", "%.4f", adjusterPos);
-            telemetry.addData("LastMult", "%.3f", lastKnownMultiplier);
-
-            telemetry.addData("PreSpinLatched", preSpinLatched);
-            telemetry.addData("PreSpinMs", preSpinStartMs == 0 ? 0 : (System.currentTimeMillis() - preSpinStartMs));
-            telemetry.addData("SpinupRemainingMs", spinupRemainingMs);
-
-            telemetry.addData("Dist Front (cm)", "%.1f", fCm);
-            telemetry.addData("Dist Center (cm)", "%.1f", cCm);
-            telemetry.addData("Dist Back (cm)", "%.1f", bCm);
-
-            telemetry.addData("FrontBall", frontHasBall);
-            telemetry.addData("CenterBall", centerHasBall);
-            telemetry.addData("BackBall", backHasBall);
-
-            telemetry.addData("PLAN Center", planCenterShot);
-            telemetry.addData("PLAN Front", planFrontShot);
-            telemetry.addData("PLAN Back", planBackShot);
-
-            telemetry.addData("LaunchState", launchState);
-            telemetry.addData("ShotRetry", "%d/%d", shotRetryCount, MAX_RETRIES_PER_SHOT);
-            telemetry.addData("FeedMS", FEED_TO_CENTER_MS);
-            telemetry.addData("FrontFeedPwr", "%.2f", FRONT_FEED_POWER);
-            telemetry.addData("BackFeedPwr", "%.2f", BACK_FEED_POWER);
-            */
-            telemetry.addLine("BotHeading: " +imu.getRobotYawPitchRollAngles().getYaw());
-            telemetry.update();
+            telemetry.addLine("BotHeading: " + imu.getRobotYawPitchRollAngles().getYaw());
             telemetryTag24Distance(tagRangeIn);
-
             telemetry.update();
         }
 
@@ -767,7 +746,7 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
     }
 
     /* ===================== SMART INTAKE LOGIC ===================== */
-    private void applySmartIntake() {
+    private void applySmartIntake(double vbat) {
         DcMotor fastMotor, slowMotor;
 
         double dir = intakeModeOne ? +1.0 : -1.0;
@@ -798,8 +777,12 @@ public class loadedHotPotatoSwerve extends LinearOpMode {
             }
         }
 
-        if (fastMotor != null) fastMotor.setPower(fastPower);
-        if (slowMotor != null) slowMotor.setPower(slowPower);
+        // Voltage compensation (9V reference, clamped)
+        double fastCmd = intakeCommand(fastPower, vbat);
+        double slowCmd = intakeCommand(slowPower, vbat);
+
+        if (fastMotor != null) fastMotor.setPower(fastCmd);
+        if (slowMotor != null) slowMotor.setPower(slowCmd);
     }
 
     /* ===================== ABORT ===================== */
