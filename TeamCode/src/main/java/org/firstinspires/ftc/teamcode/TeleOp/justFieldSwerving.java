@@ -84,6 +84,8 @@ public class justFieldSwerving extends LinearOpMode {
             // --- Field-Centric Reset (Gamepad 1 dpad_up) ---
             boolean dpadUpNow = gamepad1.dpad_up;
             if (dpadUpNow && !dpadUpPrev) {
+                telemetry.addLine("Resetting field heading");
+                telemetry.update();
                 imu.resetYaw();
                 headingOffset = 0.0;
             }
@@ -103,6 +105,9 @@ public class justFieldSwerving extends LinearOpMode {
 
             // IMU heading (robot yaw)
             double rawHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            double rawPitch= imu.getRobotYawPitchRollAngles().getPitch(AngleUnit.RADIANS);
+            double rawRoll = imu.getRobotYawPitchRollAngles().getRoll(AngleUnit.RADIANS);
+
             double botHeading = wrapAngle(rawHeading - headingOffset);
 
             // Convert field -> robot (rotate by -heading)
@@ -115,7 +120,7 @@ public class justFieldSwerving extends LinearOpMode {
             // If your strafe direction ends up mirrored, toggle this sign.
             // In your mecanum code you had: strafe = -strafe;
             // Keep it here as a single switch:
-            boolean invertRobotX = true; // <--- MOST COMMON FIX WHEN FIELD STRAFE IS “BACKWARDS”
+            boolean invertRobotX =false; // <--- MOST COMMON FIX WHEN FIELD STRAFE IS “BACKWARDS”
             if (invertRobotX) robotX = -robotX;
 
             // ------ SWERVE KINEMATICS (robotX/robotY/rot are robot-centric now) ------ //
@@ -176,6 +181,9 @@ public class justFieldSwerving extends LinearOpMode {
             telemetry.addData("fieldX/fieldY/rot", "%.2f  %.2f  %.2f", fieldX, fieldY, rot);
             telemetry.addData("rawHeading(rad)", "%.3f", rawHeading);
             telemetry.addData("botHeading(rad)", "%.3f", botHeading);
+            telemetry.addData("rawPitch(rad)", "%.3f", rawPitch);
+            telemetry.addData("rawRoll(rad)", "%.3f", rawRoll);
+
             telemetry.addData("invertRobotX", invertRobotX);
             telemetry.addData("robotX/robotY", "%.2f  %.2f", robotX, robotY);
 
@@ -231,6 +239,8 @@ public class justFieldSwerving extends LinearOpMode {
                 )
         );
         imu.initialize(parameters);
+        imu.resetYaw();
+
 
         // Drive motor directions (keep yours)
         frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);

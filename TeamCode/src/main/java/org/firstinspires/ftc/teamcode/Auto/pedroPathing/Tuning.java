@@ -25,6 +25,8 @@ import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.SwerveConstants;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,10 +82,13 @@ public class Tuning extends SelectableOpMode {
     @Override
     public void onSelect() {
         if (follower == null) {
-            follower = Constants.createFollower(hardwareMap);
+            follower = SwerveConstants.createFollower(hardwareMap);
+            //follower = Constants.createFollower(hardwareMap);
             PanelsConfigurables.INSTANCE.refreshClass(this);
         } else {
-            follower = Constants.createFollower(hardwareMap);
+            //follower = Constants.createFollower(hardwareMap);
+            follower = SwerveConstants.createFollower(hardwareMap);
+
         }
 
         follower.setStartingPose(new Pose());

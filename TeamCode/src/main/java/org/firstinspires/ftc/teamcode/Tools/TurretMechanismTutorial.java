@@ -21,13 +21,17 @@ public class TurretMechanismTutorial {
 
     // Track the servo's current commanded position (0.0 to 1.0)
     private double currentServoPos = 0.5;
-
+    private double scroll, scrollIncrement;
+    private double dir = 1;
     // Tolerances
-    private double angleTolerance = 3; // Degrees of deadzone
+    private double angleTolerance = 2; // Degrees of deadzone
     Telemetry telemetry;
+    private int tagID;
+    private boolean startSearch;
 
-    public void init(HardwareMap hwMap,Telemetry t) {
+    public void init(HardwareMap hwMap,Telemetry t, int tag) {
         telemetry = t;
+        tagID = tag;
         turretServo1 = hwMap.get(Servo.class, "turret_rotation_1");
         turretServo2 = hwMap.get(Servo.class, "turret_rotation_2");
         lights = hwMap.get(Servo.class, "lights");
@@ -37,29 +41,45 @@ public class TurretMechanismTutorial {
         turretServo1.setDirection(Servo.Direction.FORWARD);
         turretServo2.setDirection(Servo.Direction.REVERSE);
 
+        scroll  = 0.4;
+        scrollIncrement = 0.001;
         // Initialize to center
         currentServoPos = 0.5;
-        setServos(currentServoPos);
+       // setServos(currentServoPos);
     }
-    double scroll = 0.5;
-    double scrollIncrement = 0.001;
+    public void initialView(AprilTagDetection curID) {
+        if(curID!=null){
+            telemetry.addLine("21");
+            lights.setPosition(RGB.lime);
+        }else{
+            lights.setPosition(RGB.orange);
+        }
+    }
+
+
     public void update(AprilTagDetection curID) {
         // Safety: If no tag is seen, do nothing (or return to center if preferred)
         if (curID == null) {
+            lights.setPosition(RGB.blue);
+            if(scrollIncrement<0.001){
+                scrollIncrement = 0.001;
+            }
             if(scroll <=0.1 && scrollIncrement<0){
-                scrollIncrement = -1*scrollIncrement;
+                dir = -1*dir;
+               // scrollIncrement = dir*scrollIncrement;
             }
             if(scroll >=0.9 && scrollIncrement>0){
-                scrollIncrement = -1*scrollIncrement;
+                dir = -1*dir;
+               // scrollIncrement = dir*scrollIncrement;
             }
-            scroll += scrollIncrement;
-            telemetry.addLine("No Tag Detected. Stopping Turret Motor: "+scroll);
+            scroll += dir*scrollIncrement;
+            telemetry.addLine("No Tag Detected. Heading: "+scroll);
             setServos(scroll);
 
 
         }
         else {
-            scrollIncrement=0.00025;
+
             // 1. Calculate Error
             // AprilTags give 'bearing' in degrees.
             // If bearing is positive (left), we might need to increase position.
@@ -70,26 +90,39 @@ public class TurretMechanismTutorial {
             // 2. Deadzone check
             // If we are close enough, stop updating to prevent buzzing
             if (Math.abs(error) < angleTolerance) {
-                scroll = currentServoPos;
+                //scroll = currentServoPos;
                 scrollIncrement = 0.00;
                 lights.setPosition(RGB.green);
 
-            }
-            lights.setPosition(RGB.yellow);
-            // 3. Calculate "Step" (Proportional control on the RATE of change)
-            // Large error = large step; Small error = small step
-           // double step = error*kP;
+            }else {
+                if((error<10) && (scrollIncrement>=0.001)){
+                    scrollIncrement = 0.0001;
+                }
 
-            // 4. Update Position
+                if(scrollIncrement<0.0001){
+                    scrollIncrement = 0.0001;
+                }
+               // scrollIncrement = dir*scrollIncrement;
 
-            if(scroll <=0.1 && scrollIncrement<0){
-                scrollIncrement = -1*scrollIncrement;
-            }
-            if(scroll >=0.9 && scrollIncrement>0){
-                scrollIncrement = -1*scrollIncrement;
-            }
-            scroll += scrollIncrement;
+                lights.setPosition(RGB.yellow);
 
+
+                // 3. Calculate "Step" (Proportional control on the RATE of change)
+                // Large error = large step; Small error = small step
+                // double step = error*kP;
+
+                // 4. Update Position
+
+                if (scroll <= 0.1 && scrollIncrement < 0) {
+                    dir = -1*dir;
+                   // scrollIncrement = dir * scrollIncrement;
+                }
+                if (scroll >= 0.9 && scrollIncrement > 0) {
+                    dir = -1*dir;
+                    //scrollIncrement = dir * scrollIncrement;
+                }
+                scroll += dir* scrollIncrement;
+            }
             telemetry.addLine("Zeroing in:: "+scroll);
             setServos(scroll);
 
@@ -99,7 +132,7 @@ public class TurretMechanismTutorial {
 
 
             // 6. Apply to Hardware
-            setServos(currentServoPos);
+            //setServos(currentServoPos);
             //print current servoPos  and error
         }
 

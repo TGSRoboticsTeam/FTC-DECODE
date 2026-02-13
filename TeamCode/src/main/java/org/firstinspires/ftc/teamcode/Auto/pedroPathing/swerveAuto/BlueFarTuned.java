@@ -20,6 +20,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
+import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 @Config
 @Autonomous(name = "BlueFarGoal Feb6", group = "Testing")
@@ -56,7 +58,7 @@ public class BlueFarTuned extends OpMode {
     private Pose p0,p1,p2,p3,p4,p5,p6;
 
     private Servo lights;
-
+    private AprilTagWebcam aprilTagWebcam;
 
     //SETTINGS**********************************//
     //public static final double STEER_KP = 1.0;
@@ -70,6 +72,9 @@ public class BlueFarTuned extends OpMode {
     @Override
     public void init() {
         initMechanisms();
+        aprilTagWebcam.init(hardwareMap, telemetry);
+
+
 
         dashboard = FtcDashboard.getInstance();
         pt = PanelsTelemetry.INSTANCE;
@@ -107,7 +112,20 @@ public class BlueFarTuned extends OpMode {
 
 
         pathState = 0;
-
+        AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);
+        AprilTagDetection id23 = aprilTagWebcam.getTagBySpecificId(23);
+        AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);
+        AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);
+        //AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);
+        if(id21 != null){
+            telemetry.addLine("Tag 21 Detected");
+        }
+        if(id22 != null){
+            telemetry.addLine("Tag 22 Detected");
+        }
+        if(id23 != null){
+            telemetry.addLine("Tag 23 Detected");
+        }
         telemetry.addData("Status", "Swerve Follower Initialized");
         telemetry.addData("Path State", pathState);
         telemetry.update();
@@ -341,6 +359,7 @@ public class BlueFarTuned extends OpMode {
         backIntake = hardwareMap.get(DcMotor.class, "backIntake");
         pusher = hardwareMap.get(Servo.class, "trigger");
         adjuster = hardwareMap.get(Servo.class, "adjuster");
+        aprilTagWebcam = new AprilTagWebcam();
     }
     private void turnOnFlys(double power){
         telemetry.addData("Power", power);

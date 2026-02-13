@@ -90,6 +90,7 @@ public class justSwerve extends LinearOpMode {
 
             // --- CALIBRATION MODE CHECK ---
             if (isCalibrationModeActive) {
+
                 runCalibrationMode(
                         new DcMotor[]{frontLeftDrive, frontRightDrive, backLeftDrive, backRightDrive},
                         new CRServo[]{frontLeftSteer, frontRightSteer, backLeftSteer, backRightSteer}
@@ -107,6 +108,7 @@ public class justSwerve extends LinearOpMode {
             double rot = gamepad1.right_stick_x * speedMultiplier;     // Rotation
 
             // The coordinate transformation (IMU math) is REMOVED
+
 
             // Swerve Kinematics (Unchanged)
             double A = robotX - rot * (WHEELBASE / R);

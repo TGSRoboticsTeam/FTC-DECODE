@@ -22,8 +22,11 @@ public class TurretAutoAlignOpModeTutorial extends OpMode {
     @Override
     public void init() {
         aprilTagWebcam.init(hardwareMap, telemetry);
-        turret.init(hardwareMap,telemetry);
+        turret.init(hardwareMap,telemetry,24);
         telemetry.addLine("Initialized all mechanisms");
+        aprilTagWebcam.update();
+        AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);
+        turret.initialView(id21);
     }
 
     public void start() {
@@ -35,7 +38,7 @@ public class TurretAutoAlignOpModeTutorial extends OpMode {
 
         // vision logic
         aprilTagWebcam.update();
-        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(24);
+        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(21);
 
         turret.update(id20);
 
