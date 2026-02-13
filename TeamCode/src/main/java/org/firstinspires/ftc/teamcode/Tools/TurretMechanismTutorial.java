@@ -49,7 +49,7 @@ public class TurretMechanismTutorial {
     }
     public void initialView(AprilTagDetection curID) {
         if(curID!=null){
-            telemetry.addLine("21");
+            telemetry.addLine("24");
             lights.setPosition(RGB.lime);
         }else{
             lights.setPosition(RGB.orange);
@@ -139,7 +139,7 @@ public class TurretMechanismTutorial {
     }
 
     // Helper method to keep things clean
-    private void setServos(double pos) {
+    public void setServos(double pos) {
         turretServo1.setPosition(pos);
         turretServo2.setPosition(1-pos); // Since direction is reversed, this matches
     }

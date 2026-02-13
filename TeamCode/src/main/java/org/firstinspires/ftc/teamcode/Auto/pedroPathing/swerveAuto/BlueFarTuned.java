@@ -21,6 +21,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
 import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
+import org.firstinspires.ftc.teamcode.Tools.TurretMechanismTutorial;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 @Config
@@ -29,6 +30,7 @@ public class BlueFarTuned extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
+    private TurretMechanismTutorial turret;
 
     // --- Mechanism Hardware ---
     private DcMotor leftFly, rightFly, frontIntake, backIntake;
@@ -55,10 +57,12 @@ public class BlueFarTuned extends OpMode {
 
 
 
-    private Pose p0,p1,p2,p3,p4,p5,p6;
+    private Pose p0,p1,p2,p3,p4,p5,p6,p00;
 
     private Servo lights;
     private AprilTagWebcam aprilTagWebcam;
+
+    private int ballOrder = 21;
 
     //SETTINGS**********************************//
     //public static final double STEER_KP = 1.0;
@@ -72,9 +76,12 @@ public class BlueFarTuned extends OpMode {
     @Override
     public void init() {
         initMechanisms();
+         turret = new TurretMechanismTutorial();
+
+
         aprilTagWebcam.init(hardwareMap, telemetry);
 
-
+        turret.init(hardwareMap,telemetry,24);
         dashboard = FtcDashboard.getInstance();
         pt = PanelsTelemetry.INSTANCE;
         telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
@@ -90,7 +97,8 @@ public class BlueFarTuned extends OpMode {
 
 
         // Define Poses
-        p0 = new Pose(0, 9, 0);
+        p00 = new Pose(0, 8.5, 0);
+        p0 = new Pose(-2, 11, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
         p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
         p3 = new Pose(0, -TARGET_TILE_INCHES * 2, 0); //Front row 2
@@ -113,23 +121,27 @@ public class BlueFarTuned extends OpMode {
     //@Override
     private int count=0;
     public void init_loop() {
-        super.init_loop();
+       // super.init_loop();
         //count++;
         //telemetry.addLine(" "+count);
-        AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);
-        AprilTagDetection id23 = aprilTagWebcam.getTagBySpecificId(23);
-        AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);
-        AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);
-        //AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);
-        p   `   -=\.\\./.,\.\ 0
+        aprilTagWebcam.update();
+        AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);//red
+        AprilTagDetection id23 = aprilTagWebcam.getTagBySpecificId(23);//purple
+        AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);//orange
+        AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);//green
+        AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);//blue
+
         if(id21 != null){
             telemetry.addLine("Tag 21 Detected");
+            ballOrder=21;
         }
         if(id22 != null){
             telemetry.addLine("Tag 22 Detected");
+            ballOrder=22;
         }
         if(id23 != null){
             telemetry.addLine("Tag 23 Detected");
+            ballOrder=23;
         }
         telemetry.update();
 
@@ -141,6 +153,8 @@ public class BlueFarTuned extends OpMode {
 
     @Override
     public void loop() {
+
+
         follower.update();
 
         Pose currentPose = follower.getPose();
@@ -149,6 +163,7 @@ public class BlueFarTuned extends OpMode {
         // This ensures the robot only moves to the next path once the previous is finished.
         switch (pathState) {
             case 0: // Start Side 1
+                turret.setServos(.9);
                 turnOnFlys(getfarPower(0.875));//.87
 
 
@@ -198,7 +213,7 @@ public class BlueFarTuned extends OpMode {
                 if (!follower.isBusy() ) {
                    // follower.followPath(side4);
                     lights.setPosition(RGB.indigo);
-                    side4 = new Path(new BezierLine(p1, p0));
+                    side4 = new Path(new BezierLine(p1, p00));
                     side4.setConstantHeadingInterpolation(0);
                     side4.setTimeoutConstraint(2000);
 
@@ -207,7 +222,7 @@ public class BlueFarTuned extends OpMode {
                 }
                 break;
             case 4: // Waiting to finish Side 4
-
+               // follower.turnTo(0);
                 if (!follower.isBusy()) {
                     turnOnFlys(.875);
                     try {
@@ -384,21 +399,33 @@ public class BlueFarTuned extends OpMode {
             throw new RuntimeException(e);
         }
         fireOne();
-        frontIntake.setPower(0.65);
+        if(ballOrder==21 ||ballOrder==22){
+            frontIntake.setPower(0.65);
+
+        }else{
+        backIntake.setPower(-0.65);
+            }
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
         frontIntake.setPower(0);
+        backIntake.setPower(0);
         fireOne();
-        backIntake.setPower(-0.65);
+        if(ballOrder==21 ||ballOrder==22){
+            backIntake.setPower(-0.65);
+
+        }else{
+            frontIntake.setPower(0.65);
+        }
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
         backIntake.setPower(0);
+        frontIntake.setPower(0);
         fireOne();
         leftFly.setPower(0.0);
         rightFly.setPower(0.0);

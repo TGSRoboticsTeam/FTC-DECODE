@@ -126,11 +126,12 @@ public class SwerveDrivetrain extends Drivetrain {
     /**
      * Executes the calculated drive powers and steers wheels.
      */
+    private double speed = 0.75;
     @Override
     public void runDrive(double[] drivePowers) {
         // Voltage Compensation
         double multiplier = voltageCompensation ? (nominalVoltage / getVoltage()) : 1.0;
-        multiplier *= maxPowerScaling;
+        multiplier *= maxPowerScaling*speed;
 
         // Apply control to each module
         runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, drivePowers[0] * multiplier, targetAngles[0]);
