@@ -24,7 +24,7 @@ import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 @Config
-@Autonomous(name = "BlueFarGoal Feb6", group = "Testing")
+@Autonomous(name = "BlueFarGoal Feb13", group = "Testing")
 public class BlueFarTuned extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
@@ -75,7 +75,6 @@ public class BlueFarTuned extends OpMode {
         aprilTagWebcam.init(hardwareMap, telemetry);
 
 
-
         dashboard = FtcDashboard.getInstance();
         pt = PanelsTelemetry.INSTANCE;
         telemetry = new MultipleTelemetry(telemetry, dashboard.getTelemetry());
@@ -90,16 +89,14 @@ public class BlueFarTuned extends OpMode {
         lights = hardwareMap.get(Servo.class, "lights");
 
 
-
-
         // Define Poses
         p0 = new Pose(0, 9, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
-        p2 = new Pose(30,-TARGET_TILE_INCHES , 0); //Through row 1
-        p3 = new Pose(0, -TARGET_TILE_INCHES*2, 0); //Front row 2
-        p4 = new Pose(30, -TARGET_TILE_INCHES*2, 0);   //Through row 2
-        p5 = new Pose(0, -TARGET_TILE_INCHES*3, 0); //Front row 3
-        p6 = new Pose(30, -TARGET_TILE_INCHES*3, 0);//Through row 3
+        p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
+        p3 = new Pose(0, -TARGET_TILE_INCHES * 2, 0); //Front row 2
+        p4 = new Pose(30, -TARGET_TILE_INCHES * 2, 0);   //Through row 2
+        p5 = new Pose(0, -TARGET_TILE_INCHES * 3, 0); //Front row 3
+        p6 = new Pose(30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
 
 
         // Build individual paths with locked headings
@@ -107,16 +104,24 @@ public class BlueFarTuned extends OpMode {
         side1.setConstantHeadingInterpolation(0);
 
 
-
-
-
-
         pathState = 0;
+        telemetry.addData("Status", "Swerve Follower Initialized");
+        telemetry.addData("Path State", pathState);
+        telemetry.update();
+    }
+
+    //@Override
+    private int count=0;
+    public void init_loop() {
+        super.init_loop();
+        //count++;
+        //telemetry.addLine(" "+count);
         AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);
         AprilTagDetection id23 = aprilTagWebcam.getTagBySpecificId(23);
         AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);
         AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);
         //AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);
+        p   `   -=\.\\./.,\.\ 0
         if(id21 != null){
             telemetry.addLine("Tag 21 Detected");
         }
@@ -126,10 +131,13 @@ public class BlueFarTuned extends OpMode {
         if(id23 != null){
             telemetry.addLine("Tag 23 Detected");
         }
-        telemetry.addData("Status", "Swerve Follower Initialized");
-        telemetry.addData("Path State", pathState);
         telemetry.update();
+
     }
+
+
+
+
 
     @Override
     public void loop() {

@@ -64,11 +64,11 @@ public class TurretMechanismTutorial {
             if(scrollIncrement<0.001){
                 scrollIncrement = 0.001;
             }
-            if(scroll <=0.1 && scrollIncrement<0){
+            if(scroll <=0.15 && scrollIncrement<0){
                 dir = -1*dir;
                // scrollIncrement = dir*scrollIncrement;
             }
-            if(scroll >=0.9 && scrollIncrement>0){
+            if(scroll >=0.8 && scrollIncrement>0){
                 dir = -1*dir;
                // scrollIncrement = dir*scrollIncrement;
             }
@@ -113,11 +113,11 @@ public class TurretMechanismTutorial {
 
                 // 4. Update Position
 
-                if (scroll <= 0.1 && scrollIncrement < 0) {
+                if (scroll <= 0.15 && scrollIncrement < 0) {
                     dir = -1*dir;
                    // scrollIncrement = dir * scrollIncrement;
                 }
-                if (scroll >= 0.9 && scrollIncrement > 0) {
+                if (scroll >= 0.85 && scrollIncrement > 0) {
                     dir = -1*dir;
                     //scrollIncrement = dir * scrollIncrement;
                 }
