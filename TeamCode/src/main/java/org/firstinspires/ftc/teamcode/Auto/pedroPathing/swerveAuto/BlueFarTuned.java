@@ -97,8 +97,8 @@ public class BlueFarTuned extends OpMode {
 
 
         // Define Poses
-        p00 = new Pose(0, 8.5, 0);
-        p0 = new Pose(-2, 11, 0);
+        p00 = new Pose(0, 7.5, 0); //shooting
+        p0 = new Pose(0, 8.5, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
         p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
         p3 = new Pose(0, -TARGET_TILE_INCHES * 2, 0); //Front row 2
@@ -108,8 +108,9 @@ public class BlueFarTuned extends OpMode {
 
 
         // Build individual paths with locked headings
-        side1 = new Path(new BezierLine(p0, p1));
+        side1 = new Path(new BezierLine(p0, p3));
         side1.setConstantHeadingInterpolation(0);
+
 
 
         pathState = 0;
@@ -134,14 +135,17 @@ public class BlueFarTuned extends OpMode {
         if(id21 != null){
             telemetry.addLine("Tag 21 Detected");
             ballOrder=21;
+            lights.setPosition(RGB.green);
         }
         if(id22 != null){
             telemetry.addLine("Tag 22 Detected");
             ballOrder=22;
+            lights.setPosition(RGB.orange);
         }
         if(id23 != null){
             telemetry.addLine("Tag 23 Detected");
             ballOrder=23;
+            lights.setPosition(RGB.violet);
         }
         telemetry.update();
 
@@ -163,7 +167,7 @@ public class BlueFarTuned extends OpMode {
         // This ensures the robot only moves to the next path once the previous is finished.
         switch (pathState) {
             case 0: // Start Side 1
-                turret.setServos(.9);
+                turret.setServos(.65);
                 turnOnFlys(getfarPower(0.875));//.87
 
 
@@ -184,7 +188,7 @@ public class BlueFarTuned extends OpMode {
                 if (!follower.isBusy() ) {
                     lights.setPosition(RGB.cyan);
 
-                    side2 = new Path(new BezierLine(p1, p2));
+                    side2 = new Path(new BezierLine(p3, p4));
                     side2.setConstantHeadingInterpolation(0);
 
 
@@ -198,7 +202,7 @@ public class BlueFarTuned extends OpMode {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);
 
-                    side3 = new Path(new BezierLine(p2, p1));
+                    side3 = new Path(new BezierLine(p4, p3));
                     side3.setConstantHeadingInterpolation(0);
 
 
@@ -213,9 +217,10 @@ public class BlueFarTuned extends OpMode {
                 if (!follower.isBusy() ) {
                    // follower.followPath(side4);
                     lights.setPosition(RGB.indigo);
-                    side4 = new Path(new BezierLine(p1, p00));
+                    side4 = new Path(new BezierLine(p3, p00));
                     side4.setConstantHeadingInterpolation(0);
-                    side4.setTimeoutConstraint(2000);
+                    side4.setTimeoutConstraint(1000);
+
 
                     follower.followPath(side4);
                     pathState = 4;
@@ -223,6 +228,9 @@ public class BlueFarTuned extends OpMode {
                 break;
             case 4: // Waiting to finish Side 4
                // follower.turnTo(0);
+                if( side4.getDistanceRemaining()<2){
+                    follower.breakFollowing();
+                }
                 if (!follower.isBusy()) {
                     turnOnFlys(.875);
                     try {
@@ -233,7 +241,7 @@ public class BlueFarTuned extends OpMode {
                     fireThreeTimes();
                     lights.setPosition(RGB.violet);
 
-                    side5 = new Path(new BezierLine(p0, p3));
+                    side5 = new Path(new BezierLine(p00, p1));
                     side5.setConstantHeadingInterpolation(0);
 
                     follower.followPath(side5);
@@ -243,7 +251,7 @@ public class BlueFarTuned extends OpMode {
             case 5: // Waiting to finish Side 4
                 if (!follower.isBusy()) {
                     lights.setPosition(RGB.red);
-                    side6 = new Path(new BezierLine(p3, p4));
+                    side6 = new Path(new BezierLine(p1, p2));
                     side6.setConstantHeadingInterpolation(0);
                     follower.followPath(side6);
                     pathState = 6; // All Done
@@ -252,7 +260,7 @@ public class BlueFarTuned extends OpMode {
             case 6: // Waiting to finish Side 4
                 if (!follower.isBusy()) {
                     lights.setPosition(RGB.red);
-                    side7 = new Path(new BezierLine(p4, p3));
+                    side7 = new Path(new BezierLine(p2, p1));
                     side7.setConstantHeadingInterpolation(0);
 
                     follower.followPath(side7);
@@ -262,7 +270,7 @@ public class BlueFarTuned extends OpMode {
             case 7: // Waiting to finish Side 4
                 if (!follower.isBusy()) {
                     lights.setPosition(RGB.red);
-                    side8 = new Path(new BezierLine(p3, p0));
+                    side8 = new Path(new BezierLine(p1, p00));
                     side8.setConstantHeadingInterpolation(0);
 
                     follower.followPath(side8);
