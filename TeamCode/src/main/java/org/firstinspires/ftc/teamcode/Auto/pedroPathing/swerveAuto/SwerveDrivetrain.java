@@ -126,7 +126,7 @@ public class SwerveDrivetrain extends Drivetrain {
     /**
      * Executes the calculated drive powers and steers wheels.
      */
-    private double speed = 0.6;
+    private double speed = 0.7;
     @Override
     public void runDrive(double[] drivePowers) {
         // Voltage Compensation

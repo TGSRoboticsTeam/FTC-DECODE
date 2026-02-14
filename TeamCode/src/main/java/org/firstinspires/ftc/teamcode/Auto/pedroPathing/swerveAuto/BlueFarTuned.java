@@ -18,11 +18,12 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
-
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
 import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
 import org.firstinspires.ftc.teamcode.Tools.TurretMechanismTutorial;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+
+import com.pedropathing.util.Timer;
 
 @Config
 @Autonomous(name = "BlueFarGoal Feb13", group = "Testing")
@@ -55,7 +56,7 @@ public class BlueFarTuned extends OpMode {
     public static double TRIGGER_HOME = 0.225;
     public static double TRIGGER_FIRE = 0.0;
 
-
+   public Timer timer;
 
     private Pose p0,p1,p2,p3,p4,p5,p6,p00;
 
@@ -75,6 +76,7 @@ public class BlueFarTuned extends OpMode {
 
     @Override
     public void init() {
+        timer = new Timer();
         initMechanisms();
          turret = new TurretMechanismTutorial();
 
@@ -200,7 +202,11 @@ public class BlueFarTuned extends OpMode {
                 frontIntake.setPower(.7);
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
+                    timer.resetTimer();
                     lights.setPosition(RGB.blue);
+                    if(timer.getElapsedTimeSeconds() < 2){
+                        backIntake.setPower(-.45);
+                    }
 
                     side3 = new Path(new BezierLine(p4, p3));
                     side3.setConstantHeadingInterpolation(0);
@@ -213,6 +219,7 @@ public class BlueFarTuned extends OpMode {
                 }
                 break;
             case 3: // Waiting to finish Side 3
+
                 frontIntake.setPower(0.0);
                 if (!follower.isBusy() ) {
                    // follower.followPath(side4);
