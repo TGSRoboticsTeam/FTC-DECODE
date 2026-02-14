@@ -40,6 +40,9 @@ public class BlueFarTuned extends OpMode {
 
     // We use individual Paths instead of a PathChain to prevent blending
     private Path side1, side2, side3, side4,side5,side6,side7,side8,side9,side10,side11;
+    private Path side31,side32;
+    private Path bail;
+
     private int pathState = 0;
 
     private AnalogInput flEnc, frEnc, blEnc, brEnc;
@@ -57,13 +60,15 @@ public class BlueFarTuned extends OpMode {
     public static double TRIGGER_FIRE = 0.0;
 
    public Timer timer;
+   public Timer totalTime;
 
-    private Pose p0,p1,p2,p3,p4,p5,p6,p00;
+    private Pose p0,p1,p2,p3,p4,p5,p6,p00,out;
 
     private Servo lights;
     private AprilTagWebcam aprilTagWebcam;
 
     private int ballOrder = 21;
+    AprilTagDetection target;
 
     //SETTINGS**********************************//
     //public static final double STEER_KP = 1.0;
@@ -77,6 +82,7 @@ public class BlueFarTuned extends OpMode {
     @Override
     public void init() {
         timer = new Timer();
+        totalTime = new Timer();
         initMechanisms();
          turret = new TurretMechanismTutorial();
 
@@ -99,14 +105,16 @@ public class BlueFarTuned extends OpMode {
 
 
         // Define Poses
-        p00 = new Pose(0, 7.5, 0); //shooting
-        p0 = new Pose(0, 8.5, 0);
+        p00 = new Pose(0, -7.5, 0); //shooting
+        p0 = new Pose(0, -8.5, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
         p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
         p3 = new Pose(0, -TARGET_TILE_INCHES * 2, 0); //Front row 2
         p4 = new Pose(30, -TARGET_TILE_INCHES * 2, 0);   //Through row 2
         p5 = new Pose(0, -TARGET_TILE_INCHES * 3, 0); //Front row 3
         p6 = new Pose(30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
+
+        out = new Pose(30,-30,0);
 
 
         // Build individual paths with locked headings
@@ -115,7 +123,7 @@ public class BlueFarTuned extends OpMode {
 
 
 
-        pathState = 0;
+        pathState = -1;
         telemetry.addData("Status", "Swerve Follower Initialized");
         telemetry.addData("Path State", pathState);
         telemetry.update();
@@ -133,6 +141,7 @@ public class BlueFarTuned extends OpMode {
         AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);//orange
         AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);//green
         AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);//blue
+        target = id20;
 
         if(id21 != null){
             telemetry.addLine("Tag 21 Detected");
@@ -156,7 +165,8 @@ public class BlueFarTuned extends OpMode {
 
 
 
-
+    private boolean firingComplete = false;
+    private boolean hasFired = false;
     @Override
     public void loop() {
 
@@ -164,27 +174,40 @@ public class BlueFarTuned extends OpMode {
         follower.update();
 
         Pose currentPose = follower.getPose();
-
+        if(totalTime.getElapsedTimeSeconds()>27){
+            follower.breakFollowing();
+            //Get current Pose
+            Pose current = follower.getPose();
+            //Create a path from current pose to out
+            Path target = new Path(new BezierLine(current, out));
+            follower.followPath(target);
+            pathState = 99;
+        }
         // --- CARTESIAN STATE MACHINE ---
         // This ensures the robot only moves to the next path once the previous is finished.
         switch (pathState) {
-            case 0: // Start Side 1
-                turret.setServos(.65);
-                turnOnFlys(getfarPower(0.875));//.87
-
-
-                adjuster.setPosition(0);
-                try {
-                    Thread.sleep(800);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+            case -1:
+                boolean complete = turret.updateUntil(target);
+                complete = true;
+                if(complete){
+                    pathState = 0;
                 }
-                fireThreeTimes();
+            break;
+            case 0: // Start Side 1
+                //turret.setServos(.65);
+                if(firingComplete){
+                    lights.setPosition(RGB.green);
+                    follower.followPath(side1);
+                    pathState =1;
+                }
+                if(!hasFired){
+                    hasFired = true;
+                    turnOnFlys(getfarPower(0.875));//.87
+                    adjuster.setPosition(0);
 
-                lights.setPosition(RGB.green);
-                follower.followPath(side1);
-                pathState = 1;
-
+                    fireThreeTimes();
+                    firingComplete=true;
+                }
                 break;
             case 1: // Waiting to finish Side 1
                 if (!follower.isBusy() ) {
@@ -205,7 +228,7 @@ public class BlueFarTuned extends OpMode {
                     timer.resetTimer();
                     lights.setPosition(RGB.blue);
                     if(timer.getElapsedTimeSeconds() < 2){
-                        backIntake.setPower(-.45);
+                        //backIntake.setPower(-.45);
                     }
 
                     side3 = new Path(new BezierLine(p4, p3));
@@ -224,7 +247,34 @@ public class BlueFarTuned extends OpMode {
                 if (!follower.isBusy() ) {
                    // follower.followPath(side4);
                     lights.setPosition(RGB.indigo);
-                    side4 = new Path(new BezierLine(p3, p00));
+                    side31 = new Path(new BezierLine(p3, p1));
+                    side31.setConstantHeadingInterpolation(0);
+                    side31.setTimeoutConstraint(1000);
+
+                    lights.setPosition(RGB.lime);
+                    follower.followPath(side31);
+                    pathState = 31;
+                }
+                break;
+            case 31: // Waiting to finish Side 3
+
+               // follower.turnTo(0);
+                if (!follower.isBusy() ) {
+                    // follower.followPath(side4);
+                    lights.setPosition(RGB.white);
+
+
+
+                    pathState = 32;
+                }
+                break;
+            case 32: // Waiting to finish Side 3
+
+                frontIntake.setPower(0.0);
+                if (!follower.isBusy() ) {
+                    // follower.followPath(side4);
+                    lights.setPosition(RGB.indigo);
+                    side4 = new Path(new BezierLine(p3, p0));
                     side4.setConstantHeadingInterpolation(0);
                     side4.setTimeoutConstraint(1000);
 
@@ -330,6 +380,11 @@ public class BlueFarTuned extends OpMode {
                     pathState = 11; // All Done
                 }
                 break;
+            case 99: // Waiting to finish Side 4
+                if (!follower.isBusy()) {
+                    lights.setPosition(RGB.blue);
+                }
+                break;
         }
 
         // --- CALC DATA ---
@@ -409,7 +464,7 @@ public class BlueFarTuned extends OpMode {
 
     private void fireThreeTimes() {
         try {
-            Thread.sleep(1000);
+            Thread.sleep(400);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -421,7 +476,7 @@ public class BlueFarTuned extends OpMode {
         backIntake.setPower(-0.65);
             }
         try {
-            Thread.sleep(1000);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -435,7 +490,7 @@ public class BlueFarTuned extends OpMode {
             frontIntake.setPower(0.65);
         }
         try {
-            Thread.sleep(1000);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -448,13 +503,13 @@ public class BlueFarTuned extends OpMode {
     public void fireOne()  {
         pusher.setPosition(TRIGGER_FIRE);
         try {
-            Thread.sleep(1000);
+            Thread.sleep(400);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
         pusher.setPosition(TRIGGER_HOME);
         try {
-            Thread.sleep(1000);
+            Thread.sleep(400);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

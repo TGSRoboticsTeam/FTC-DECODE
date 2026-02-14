@@ -137,6 +137,88 @@ public class TurretMechanismTutorial {
         }
 
     }
+    public boolean updateUntil(AprilTagDetection curID) {
+        // Safety: If no tag is seen, do nothing (or return to center if preferred)
+        if (curID == null) {
+            lights.setPosition(RGB.blue);
+            if(scrollIncrement<0.001){
+                scrollIncrement = 0.001;
+            }
+            if(scroll <=0.15 && scrollIncrement<0){
+                dir = -1*dir;
+                // scrollIncrement = dir*scrollIncrement;
+            }
+            if(scroll >=0.8 && scrollIncrement>0){
+                dir = -1*dir;
+                // scrollIncrement = dir*scrollIncrement;
+            }
+            scroll += dir*scrollIncrement;
+            telemetry.addLine("No Tag Detected. Heading: "+scroll);
+            setServos(scroll);
+
+
+        }
+        else {
+
+            // 1. Calculate Error
+            // AprilTags give 'bearing' in degrees.
+            // If bearing is positive (left), we might need to increase position.
+            // You may need to flip the sign (-) depending on your servo orientation.
+            // double error = -curID.ftcPose.bearing;
+            double error = curID.ftcPose.elevation;  //sign depends on rotation  , using elevation because rotated
+
+            // 2. Deadzone check
+            // If we are close enough, stop updating to prevent buzzing
+            if (Math.abs(error) < angleTolerance) {
+                //scroll = currentServoPos;
+                scrollIncrement = 0.00;
+                lights.setPosition(RGB.green);
+                return true;
+
+            }else {
+                if((error<10) && (scrollIncrement>=0.001)){
+                    scrollIncrement = 0.0001;
+                }
+
+                if(scrollIncrement<0.0001){
+                    scrollIncrement = 0.0001;
+                }
+                // scrollIncrement = dir*scrollIncrement;
+
+                lights.setPosition(RGB.yellow);
+
+
+                // 3. Calculate "Step" (Proportional control on the RATE of change)
+                // Large error = large step; Small error = small step
+                // double step = error*kP;
+
+                // 4. Update Position
+
+                if (scroll <= 0.15 && scrollIncrement < 0) {
+                    dir = -1*dir;
+                    // scrollIncrement = dir * scrollIncrement;
+                }
+                if (scroll >= 0.85 && scrollIncrement > 0) {
+                    dir = -1*dir;
+                    //scrollIncrement = dir * scrollIncrement;
+                }
+                scroll += dir* scrollIncrement;
+            }
+            telemetry.addLine("Zeroing in:: "+scroll);
+            setServos(scroll);
+
+            telemetry.addLine("Current Servo Pos: " + currentServoPos);
+            telemetry.addLine("Error: " + error);
+            telemetry.update();
+
+
+            // 6. Apply to Hardware
+            //setServos(currentServoPos);
+            //print current servoPos  and error
+        }
+        return false;
+
+    }
 
     // Helper method to keep things clean
     public void setServos(double pos) {
