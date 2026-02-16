@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 
-import static java.lang.Thread.sleep;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
@@ -12,9 +10,9 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.Path;
+import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -22,16 +20,13 @@ import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
 import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
 import org.firstinspires.ftc.teamcode.Tools.TurretMechanismTutorial;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
-import com.pedropathing.util.Timer;
-
 @Config
 @Autonomous(name = "BlueFarGoal Feb13", group = "Testing")
-public class BlueFarTuned extends OpMode {
+public class BlueFarTunedOLD extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
@@ -142,7 +137,7 @@ public class BlueFarTuned extends OpMode {
 
 
 
-        pathState = -2;
+        pathState = -1;
         telemetry.addData("Status", "Swerve Follower Initialized");
         telemetry.addData("Path State", pathState);
         telemetry.update();
