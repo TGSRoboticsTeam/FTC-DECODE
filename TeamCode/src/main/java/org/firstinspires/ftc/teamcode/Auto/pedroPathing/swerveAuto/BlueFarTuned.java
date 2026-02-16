@@ -17,7 +17,11 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
 import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
 import org.firstinspires.ftc.teamcode.Tools.TurretMechanismTutorial;
@@ -47,6 +51,21 @@ public class BlueFarTuned extends OpMode {
 
     private AnalogInput flEnc, frEnc, blEnc, brEnc;
     private final double VOLTAGE_TO_RAD = (2 * Math.PI) / 3.3;
+
+
+    /* ===================== SENSORS (BALL DISTANCE) ===================== */
+    private NormalizedColorSensor frontColor, centerColor, backColor; // config compatibility
+    private DistanceSensor frontDist, centerDist, backDist;
+
+    boolean frontHasBall=false;
+    boolean centerHasBall=false;
+    boolean backHasBall=false;
+
+    /* ===================== DISTANCE BALL DETECTION (HYSTERESIS) ===================== */
+    final double FRONT_ON_CM  = 4.0, FRONT_OFF_CM  = 5.0;
+    final double CENTER_ON_CM = 4.0, CENTER_OFF_CM = 5.0;
+    final double BACK_ON_CM   = 4.0, BACK_OFF_CM   = 5.0;
+
 
     public static double ROBOT_WIDTH = 18.0;
     public static double ROBOT_LENGTH = 18.0;
@@ -123,7 +142,7 @@ public class BlueFarTuned extends OpMode {
 
 
 
-        pathState = -1;
+        pathState = -2;
         telemetry.addData("Status", "Swerve Follower Initialized");
         telemetry.addData("Path State", pathState);
         telemetry.update();
@@ -186,6 +205,11 @@ public class BlueFarTuned extends OpMode {
         // --- CARTESIAN STATE MACHINE ---
         // This ensures the robot only moves to the next path once the previous is finished.
         switch (pathState) {
+            case -2:
+                if(hasBall()>0){
+                    lights.setPosition(RGB.white);
+                };
+            break;
             case -1:
                 boolean complete = turret.updateUntil(target);
                 complete = true;
@@ -434,6 +458,46 @@ public class BlueFarTuned extends OpMode {
         return p * 12.0/voltage;
     }
 
+    private int hasBall(){  /* ===================== BALL DISTANCE SENSING ===================== */
+        double fCm = safeDistanceCm(frontDist);
+        double cCm = safeDistanceCm(centerDist);
+        double bCm = safeDistanceCm(backDist);
+
+        frontHasBall  = hysteresisBall(frontHasBall,  fCm, FRONT_ON_CM,  FRONT_OFF_CM);
+        centerHasBall = hysteresisBall(centerHasBall, cCm, CENTER_ON_CM, CENTER_OFF_CM);
+        backHasBall   = hysteresisBall(backHasBall,   bCm, BACK_ON_CM,   BACK_OFF_CM);
+
+        if(frontHasBall && centerHasBall && backHasBall){
+            return 7;
+        } else if (frontHasBall && centerHasBall) {
+            return 3;
+        } else if (frontHasBall && backHasBall) {
+            return 4;
+        } else if (centerHasBall && backHasBall) {
+            return 5;
+        } else if (frontHasBall) {
+            return 1;
+        } else if (centerHasBall) {
+            return 2;
+        } else if (backHasBall ) {
+            return 3;
+        }
+        return 0;
+
+    }
+
+    /* ===================== DISTANCE HELPERS ===================== */
+    private double safeDistanceCm(DistanceSensor s) {
+        if (s == null) return 999.0;
+        double cm = s.getDistance(DistanceUnit.CM);
+        if (Double.isNaN(cm) || Double.isInfinite(cm)) return 999.0;
+        return cm;
+    }
+
+
+    private boolean hysteresisBall(boolean prev, double cm, double onCm, double offCm) {
+        return prev ? (cm <= offCm) : (cm <= onCm);
+    }
     private void drawToDashboard(Pose currentPose) {
         TelemetryPacket packet = new TelemetryPacket();
         Canvas fieldOverlay = packet.fieldOverlay();
