@@ -204,7 +204,7 @@ public class BlueFarTuned extends OpMode {
                     //follower.followPath(side3);
                     timer.resetTimer();
                     lights.setPosition(RGB.blue);
-                    if(timer.getElapsedTimeSeconds() < 2){
+                    if(timer.getElapsedTimeSeconds() < 2) {
                         backIntake.setPower(-.45);
                     }
 
@@ -221,12 +221,13 @@ public class BlueFarTuned extends OpMode {
             case 3: // Waiting to finish Side 3
 
                 frontIntake.setPower(0.0);
+                backIntake.setPower(0.0);
                 if (!follower.isBusy() ) {
                    // follower.followPath(side4);
                     lights.setPosition(RGB.indigo);
                     side4 = new Path(new BezierLine(p3, p00));
                     side4.setConstantHeadingInterpolation(0);
-                    side4.setTimeoutConstraint(1000);
+                    side4.setTimeoutConstraint(300);
 
 
                     follower.followPath(side4);
@@ -235,13 +236,13 @@ public class BlueFarTuned extends OpMode {
                 break;
             case 4: // Waiting to finish Side 4
                // follower.turnTo(0);
-                if( side4.getDistanceRemaining()<2){
-                    follower.breakFollowing();
-                }
+                //if( side4.getDistanceRemaining()<2){
+                //    follower.breakFollowing();
+                //}
                 if (!follower.isBusy()) {
                     turnOnFlys(.875);
                     try {
-                        Thread.sleep(800);
+                        Thread.sleep(500);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
@@ -287,7 +288,7 @@ public class BlueFarTuned extends OpMode {
             case 8: // Waiting to finish Side 4
                 if (!follower.isBusy()) {
                     lights.setPosition(RGB.red);
-                    side9= new Path(new BezierLine(p0, p5));
+                    side9= new Path(new BezierLine(p00, p5));
                     side9.setConstantHeadingInterpolation(0);
 
                     follower.followPath(side9);
@@ -409,7 +410,7 @@ public class BlueFarTuned extends OpMode {
 
     private void fireThreeTimes() {
         try {
-            Thread.sleep(1000);
+            Thread.sleep(700);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -421,7 +422,7 @@ public class BlueFarTuned extends OpMode {
         backIntake.setPower(-0.65);
             }
         try {
-            Thread.sleep(1000);
+            Thread.sleep(900);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
