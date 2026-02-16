@@ -165,17 +165,17 @@ public class deepFriedPotato extends LinearOpMode {
     private static final long FEED_TO_CENTER_MS = 450;
 
     /* ===================== OUTWARD BURP ===================== */
-    private static final double SPINUP_OUTWARD_POWER = 0.2;
+    private static final double SPINUP_OUTWARD_POWER = 0.4;
     private static final long SPINUP_OUTWARD_MS = 30;
-    private static final long SHORT_BURP_MS = SPINUP_OUTWARD_MS / 2; // “burp 1/3 as long”
+    private static final long SHORT_BURP_MS = 20; // “burp 1/3 as long”
 
     /* ===================== TRIGGER SERVO ===================== */
     final double TRIGGER_FIRE = 0.0;
     final double TRIGGER_HOME = 0.225;
 
-    final long LAUNCH_TRIGGER_HOLD_MS = 290;
+    final long LAUNCH_TRIGGER_HOLD_MS = 300;
     final long TRIGGER_RESET_WAIT_MS = 125;
-    final long RETRY_EXTRA_WAIT_MS = 250;
+    final long RETRY_EXTRA_WAIT_MS = 350;
 
     /* ===================== LAUNCH TIMING ===================== */
     final long FLYWHEEL_SPINUP_MS = 1000;
@@ -448,7 +448,7 @@ public class deepFriedPotato extends LinearOpMode {
             double speedMultiplier = gamepad1.right_bumper ? MAX_SPEED_SLOW : MAX_SPEED_FAST;
 
             // --- Field-Centric Reset (Gamepad 1 dpad_up) ---
-            boolean dpadUpNow = gamepad1.dpad_up;
+            boolean dpadUpNow = gamepad1.y;
             if (dpadUpNow && !dpadUpPrev) imu.resetYaw();
             dpadUpPrev = dpadUpNow;
 
