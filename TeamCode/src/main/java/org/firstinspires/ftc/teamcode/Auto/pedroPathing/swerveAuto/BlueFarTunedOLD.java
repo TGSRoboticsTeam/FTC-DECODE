@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto;
 
-import static java.lang.Thread.sleep;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
@@ -12,22 +10,23 @@ import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.Path;
+import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.Servo;
-import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
+
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
 import org.firstinspires.ftc.teamcode.Tools.TurretMechanismTutorial;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
-import com.pedropathing.util.Timer;
-
 @Config
-@Autonomous(name = "BlueFarGoal Feb13", group = "Testing")
-public class BlueFarTuned extends OpMode {
+@Autonomous(name = "BlueFarGoal Feb14", group = "Testing")
+public class BlueFarTunedOLD extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
@@ -40,10 +39,28 @@ public class BlueFarTuned extends OpMode {
 
     // We use individual Paths instead of a PathChain to prevent blending
     private Path side1, side2, side3, side4,side5,side6,side7,side8,side9,side10,side11;
+    private Path side31,side32;
+    private Path bail;
+
     private int pathState = 0;
 
     private AnalogInput flEnc, frEnc, blEnc, brEnc;
     private final double VOLTAGE_TO_RAD = (2 * Math.PI) / 3.3;
+
+
+    /* ===================== SENSORS (BALL DISTANCE) ===================== */
+    private NormalizedColorSensor frontColor, centerColor, backColor; // config compatibility
+    private DistanceSensor frontDist, centerDist, backDist;
+
+    boolean frontHasBall=false;
+    boolean centerHasBall=false;
+    boolean backHasBall=false;
+
+    /* ===================== DISTANCE BALL DETECTION (HYSTERESIS) ===================== */
+    final double FRONT_ON_CM  = 4.0, FRONT_OFF_CM  = 5.0;
+    final double CENTER_ON_CM = 4.0, CENTER_OFF_CM = 5.0;
+    final double BACK_ON_CM   = 4.0, BACK_OFF_CM   = 5.0;
+
 
     public static double ROBOT_WIDTH = 18.0;
     public static double ROBOT_LENGTH = 18.0;
@@ -57,13 +74,15 @@ public class BlueFarTuned extends OpMode {
     public static double TRIGGER_FIRE = 0.0;
 
    public Timer timer;
+   public Timer totalTime;
 
-    private Pose p0,p1,p2,p3,p4,p5,p6,p00;
+    private Pose p0,p1,p2,p3,p4,p5,p6,p00,out;
 
     private Servo lights;
     private AprilTagWebcam aprilTagWebcam;
 
     private int ballOrder = 21;
+    AprilTagDetection target;
 
     //SETTINGS**********************************//
     //public static final double STEER_KP = 1.0;
@@ -77,6 +96,7 @@ public class BlueFarTuned extends OpMode {
     @Override
     public void init() {
         timer = new Timer();
+        totalTime = new Timer();
         initMechanisms();
          turret = new TurretMechanismTutorial();
 
@@ -99,14 +119,16 @@ public class BlueFarTuned extends OpMode {
 
 
         // Define Poses
-        p00 = new Pose(0, 7.5, 0); //shooting
-        p0 = new Pose(0, 8.5, 0);
+        p00 = new Pose(0, -7.5, 0); //shooting
+        p0 = new Pose(0, -8.5, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
         p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
         p3 = new Pose(0, -TARGET_TILE_INCHES * 2, 0); //Front row 2
         p4 = new Pose(30, -TARGET_TILE_INCHES * 2, 0);   //Through row 2
         p5 = new Pose(0, -TARGET_TILE_INCHES * 3, 0); //Front row 3
         p6 = new Pose(30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
+
+        out = new Pose(30,-30,0);
 
 
         // Build individual paths with locked headings
@@ -115,7 +137,7 @@ public class BlueFarTuned extends OpMode {
 
 
 
-        pathState = 0;
+        pathState = -1;
         telemetry.addData("Status", "Swerve Follower Initialized");
         telemetry.addData("Path State", pathState);
         telemetry.update();
@@ -133,6 +155,7 @@ public class BlueFarTuned extends OpMode {
         AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);//orange
         AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);//green
         AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);//blue
+        target = id20;
 
         if(id21 != null){
             telemetry.addLine("Tag 21 Detected");
@@ -156,7 +179,8 @@ public class BlueFarTuned extends OpMode {
 
 
 
-
+    private boolean firingComplete = false;
+    private boolean hasFired = false;
     @Override
     public void loop() {
 
@@ -164,27 +188,45 @@ public class BlueFarTuned extends OpMode {
         follower.update();
 
         Pose currentPose = follower.getPose();
-
+        if(totalTime.getElapsedTimeSeconds()>27){
+            follower.breakFollowing();
+            //Get current Pose
+            Pose current = follower.getPose();
+            //Create a path from current pose to out
+            Path target = new Path(new BezierLine(current, out));
+            follower.followPath(target);
+            pathState = 99;
+        }
         // --- CARTESIAN STATE MACHINE ---
         // This ensures the robot only moves to the next path once the previous is finished.
         switch (pathState) {
-            case 0: // Start Side 1
-                turret.setServos(.65);
-                turnOnFlys(getfarPower(0.875));//.87
-
-
-                adjuster.setPosition(0);
-                try {
-                    Thread.sleep(800);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+            case -2:
+                if(hasBall()>0){
+                    lights.setPosition(RGB.white);
+                };
+            break;
+            case -1:
+                boolean complete = turret.updateUntil(target);
+                complete = true;
+                if(complete){
+                    pathState = 0;
                 }
-                fireThreeTimes();
+            break;
+            case 0: // Start Side 1
+                //turret.setServos(.65);
+                if(firingComplete){
+                    lights.setPosition(RGB.green);
+                    follower.followPath(side1);
+                    pathState =1;
+                }
+                if(!hasFired){
+                    hasFired = true;
+                    turnOnFlys(getfarPower(0.875));//.87
+                    adjuster.setPosition(0);
 
-                lights.setPosition(RGB.green);
-                follower.followPath(side1);
-                pathState = 1;
-
+                    fireThreeTimes();
+                    firingComplete=true;
+                }
                 break;
             case 1: // Waiting to finish Side 1
                 if (!follower.isBusy() ) {
@@ -204,8 +246,13 @@ public class BlueFarTuned extends OpMode {
                     //follower.followPath(side3);
                     timer.resetTimer();
                     lights.setPosition(RGB.blue);
+<<<<<<< HEAD:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Auto/pedroPathing/swerveAuto/BlueFarTunedOLD.java
+                    if(timer.getElapsedTimeSeconds() < 2){
+                        //backIntake.setPower(-.45);
+=======
                     if(timer.getElapsedTimeSeconds() < 2) {
                         backIntake.setPower(-.45);
+>>>>>>> 3348a14f4b92d99354a2c17e34c3eed06fd1c22c:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Auto/pedroPathing/swerveAuto/BlueFarTuned.java
                     }
 
                     side3 = new Path(new BezierLine(p4, p3));
@@ -225,7 +272,34 @@ public class BlueFarTuned extends OpMode {
                 if (!follower.isBusy() ) {
                    // follower.followPath(side4);
                     lights.setPosition(RGB.indigo);
-                    side4 = new Path(new BezierLine(p3, p00));
+                    side31 = new Path(new BezierLine(p3, p1));
+                    side31.setConstantHeadingInterpolation(0);
+                    side31.setTimeoutConstraint(1000);
+
+                    lights.setPosition(RGB.lime);
+                    follower.followPath(side31);
+                    pathState = 31;
+                }
+                break;
+            case 31: // Waiting to finish Side 3
+
+               // follower.turnTo(0);
+                if (!follower.isBusy() ) {
+                    // follower.followPath(side4);
+                    lights.setPosition(RGB.white);
+
+
+
+                    pathState = 32;
+                }
+                break;
+            case 32: // Waiting to finish Side 3
+
+                frontIntake.setPower(0.0);
+                if (!follower.isBusy() ) {
+                    // follower.followPath(side4);
+                    lights.setPosition(RGB.indigo);
+                    side4 = new Path(new BezierLine(p3, p0));
                     side4.setConstantHeadingInterpolation(0);
                     side4.setTimeoutConstraint(300);
 
@@ -331,6 +405,11 @@ public class BlueFarTuned extends OpMode {
                     pathState = 11; // All Done
                 }
                 break;
+            case 99: // Waiting to finish Side 4
+                if (!follower.isBusy()) {
+                    lights.setPosition(RGB.blue);
+                }
+                break;
         }
 
         // --- CALC DATA ---
@@ -380,6 +459,46 @@ public class BlueFarTuned extends OpMode {
         return p * 12.0/voltage;
     }
 
+    private int hasBall(){  /* ===================== BALL DISTANCE SENSING ===================== */
+        double fCm = safeDistanceCm(frontDist);
+        double cCm = safeDistanceCm(centerDist);
+        double bCm = safeDistanceCm(backDist);
+
+        frontHasBall  = hysteresisBall(frontHasBall,  fCm, FRONT_ON_CM,  FRONT_OFF_CM);
+        centerHasBall = hysteresisBall(centerHasBall, cCm, CENTER_ON_CM, CENTER_OFF_CM);
+        backHasBall   = hysteresisBall(backHasBall,   bCm, BACK_ON_CM,   BACK_OFF_CM);
+
+        if(frontHasBall && centerHasBall && backHasBall){
+            return 7;
+        } else if (frontHasBall && centerHasBall) {
+            return 3;
+        } else if (frontHasBall && backHasBall) {
+            return 4;
+        } else if (centerHasBall && backHasBall) {
+            return 5;
+        } else if (frontHasBall) {
+            return 1;
+        } else if (centerHasBall) {
+            return 2;
+        } else if (backHasBall ) {
+            return 3;
+        }
+        return 0;
+
+    }
+
+    /* ===================== DISTANCE HELPERS ===================== */
+    private double safeDistanceCm(DistanceSensor s) {
+        if (s == null) return 999.0;
+        double cm = s.getDistance(DistanceUnit.CM);
+        if (Double.isNaN(cm) || Double.isInfinite(cm)) return 999.0;
+        return cm;
+    }
+
+
+    private boolean hysteresisBall(boolean prev, double cm, double onCm, double offCm) {
+        return prev ? (cm <= offCm) : (cm <= onCm);
+    }
     private void drawToDashboard(Pose currentPose) {
         TelemetryPacket packet = new TelemetryPacket();
         Canvas fieldOverlay = packet.fieldOverlay();
@@ -410,7 +529,11 @@ public class BlueFarTuned extends OpMode {
 
     private void fireThreeTimes() {
         try {
+<<<<<<< HEAD:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Auto/pedroPathing/swerveAuto/BlueFarTunedOLD.java
+            Thread.sleep(400);
+=======
             Thread.sleep(700);
+>>>>>>> 3348a14f4b92d99354a2c17e34c3eed06fd1c22c:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Auto/pedroPathing/swerveAuto/BlueFarTuned.java
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -422,7 +545,11 @@ public class BlueFarTuned extends OpMode {
         backIntake.setPower(-0.65);
             }
         try {
+<<<<<<< HEAD:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Auto/pedroPathing/swerveAuto/BlueFarTunedOLD.java
+            Thread.sleep(200);
+=======
             Thread.sleep(900);
+>>>>>>> 3348a14f4b92d99354a2c17e34c3eed06fd1c22c:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/Auto/pedroPathing/swerveAuto/BlueFarTuned.java
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -436,7 +563,7 @@ public class BlueFarTuned extends OpMode {
             frontIntake.setPower(0.65);
         }
         try {
-            Thread.sleep(1000);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -449,13 +576,13 @@ public class BlueFarTuned extends OpMode {
     public void fireOne()  {
         pusher.setPosition(TRIGGER_FIRE);
         try {
-            Thread.sleep(1000);
+            Thread.sleep(400);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
         pusher.setPosition(TRIGGER_HOME);
         try {
-            Thread.sleep(1000);
+            Thread.sleep(400);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
