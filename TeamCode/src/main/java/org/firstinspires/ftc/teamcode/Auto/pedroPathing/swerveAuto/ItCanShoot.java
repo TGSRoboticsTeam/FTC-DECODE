@@ -19,7 +19,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
 import org.firstinspires.ftc.teamcode.Tools.AprilTagWebcam;
-import org.firstinspires.ftc.teamcode.Tools.TurretMechanismTutorial;
+import org.firstinspires.ftc.teamcode.Tools.TurretMechanism;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 @Config
@@ -28,7 +28,7 @@ public class ItCanShoot extends OpMode {
     private Follower follower;
     private FtcDashboard dashboard;
     private PanelsTelemetry pt;
-    private TurretMechanismTutorial turret;
+    private TurretMechanism turret;
 
     // --- Mechanism Hardware ---
     private DcMotor leftFly, rightFly, frontIntake, backIntake;
@@ -95,7 +95,7 @@ public class ItCanShoot extends OpMode {
         timer = new Timer();
         initMechanisms();
 
-        turret = new TurretMechanismTutorial();
+        turret = new TurretMechanism();
         turret.init(hardwareMap, telemetry, 24);
 
         aprilTagWebcam.init(hardwareMap, telemetry);

@@ -4,11 +4,11 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Auto.pedroPathing.swerveAuto.RGB;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.Servo;
-import com.qualcomm.robotcore.util.Range;
+
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 
-public class TurretMechanismTutorial {
+public class TurretMechanism {
     // Hardware
     private Servo turretServo1;
     private Servo turretServo2;
