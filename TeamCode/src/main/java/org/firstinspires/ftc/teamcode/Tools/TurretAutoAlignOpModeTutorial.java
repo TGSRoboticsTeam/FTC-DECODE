@@ -11,7 +11,7 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 @TeleOp
 public class TurretAutoAlignOpModeTutorial extends OpMode {
     private AprilTagWebcam aprilTagWebcam = new AprilTagWebcam();
-    private TurretMechanismTutorial turret = new TurretMechanismTutorial();
+    private TurretMechanism turret = new TurretMechanism();
 
 
     // ---------------- used to auto update P and D ---------------------
