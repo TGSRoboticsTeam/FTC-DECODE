@@ -75,6 +75,7 @@ public class BlueFarTuned extends OpMode {
     public static double TRIGGER_FIRE = 0.0;
 
     public Timer timer;
+    public Timer gameTimer;
 
 
 
@@ -135,6 +136,7 @@ public class BlueFarTuned extends OpMode {
     @Override
     public void init() {
         timer = new Timer();
+        gameTimer = new Timer();
 
         initMechanisms();
         turret = new TurretMechanism();
@@ -146,7 +148,7 @@ public class BlueFarTuned extends OpMode {
 
 
         // Define Poses
-        p00 = new Pose(0, 7.5, 0); //shooting
+        p00 = new Pose(0, 6.5, 0); //shooting
         p0 = new Pose(0, 8.5, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
         p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
@@ -155,7 +157,7 @@ public class BlueFarTuned extends OpMode {
         p5 = new Pose(0, -TARGET_TILE_INCHES * 3, 0); //Front row 3
         p6 = new Pose(30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
 
-        follower.setPose(p0);
+        follower.setStartingPose(p0);
 
         // Build individual paths with locked headings
         side1 = new Path(new BezierLine(p0, p3));
@@ -180,6 +182,7 @@ public class BlueFarTuned extends OpMode {
         AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);//blue
         targetID = id24;
 
+        gameTimer.resetTimer();
 
         if(id21 != null){
             telemetry.addLine("Tag 21 Detected");
@@ -204,7 +207,10 @@ public class BlueFarTuned extends OpMode {
 
     @Override
     public void loop() {
-
+        if(gameTimer.getElapsedTimeSeconds()>28){
+            follower.breakFollowing();
+            pathState = 99;
+        }
 
         follower.update();
         Pose currentPose = follower.getPose();
@@ -283,7 +289,7 @@ public class BlueFarTuned extends OpMode {
                     }
                         break;
                     case 31: // Waiting to finish Side 3
-
+                         follower.setHeading(0);
                         // follower.turnTo(0);
                         if (!follower.isBusy() ) {
                             // follower.followPath(side4);
@@ -299,7 +305,7 @@ public class BlueFarTuned extends OpMode {
                         if (!follower.isBusy() ) {
                             // follower.followPath(side4);
                             lights.setPosition(RGB.indigo);
-                            side4 = new Path(new BezierLine(p3, p00));
+                            side4 = new Path(new BezierLine(p1, p00));
                             side4.setConstantHeadingInterpolation(0);
 
 
@@ -312,99 +318,110 @@ public class BlueFarTuned extends OpMode {
                         if (!follower.isBusy()) {
                             fireThree(getfarPower(0.875));
                             lights.setPosition(RGB.orange);
-
-                            side5 = new Path(new BezierLine(p00, p1));
-                            side5.setConstantHeadingInterpolation(0);
-
+                            
                             follower.followPath(side5);
-                            pathState = 5; // All Done
+                            pathState = 42; // All Done
                         }
                         break;
-                    case 5: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.red);
+                case 42:
+                    if (!follower.isBusy()) {
+                        side5 = new Path(new BezierLine(p1, p00));
+                        side5.setConstantHeadingInterpolation(0);
 
-                            side6 = new Path(new BezierLine(p1, p2));
-                            side6.setConstantHeadingInterpolation(0);
+                        pathState = 5;
+                    }
+                    break;
+                case 5:        // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.red);
 
-                            follower.followPath(side6);
-                            pathState = 6; // All Done
-                        }
-                        break;
-                    case 6: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.red);
-                            side7 = new Path(new BezierLine(p2, p1));
-                            side7.setConstantHeadingInterpolation(0);
+                        side6 = new Path(new BezierLine(p1, p2));
+                        side6.setConstantHeadingInterpolation(0);
 
-                            follower.followPath(side7);
-                            pathState = 7; // All Done
-                        }
-                        break;
-                    case 7: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.red);
-                            side8 = new Path(new BezierLine(p1, p00));
-                            side8.setConstantHeadingInterpolation(0);
+                        follower.followPath(side6);
+                        pathState = 6; // All Done
+                    }
+                    break;
+                case 6: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.red);
+                        side7 = new Path(new BezierLine(p2, p1));
+                        side7.setConstantHeadingInterpolation(0);
 
-                            follower.followPath(side8);
-                            pathState = 8; // All Done
-                        }
-                        break;
-                    case 8: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.red);
-                            side9= new Path(new BezierLine(p00, p5));
-                            side9.setConstantHeadingInterpolation(0);
+                        follower.followPath(side7);
+                        pathState = 7; // All Done
+                    }
+                    break;
+                case 7: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.red);
+                        side8 = new Path(new BezierLine(p1, p00));
+                        side8.setConstantHeadingInterpolation(0);
 
-                            follower.followPath(side9);
-                            pathState = 9; // All Done
-                        }
-                        break;
-                    case 9: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.red);
+                        follower.followPath(side8);
+                        pathState = 8; // All Done
+                    }
+                    break;
+                case 8: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.red);
+                        side9= new Path(new BezierLine(p00, p5));
+                        side9.setConstantHeadingInterpolation(0);
 
-                            side10 = new Path(new BezierLine(p5, p6));
-                            side10.setConstantHeadingInterpolation(0);
+                        follower.followPath(side9);
+                        pathState = 9; // All Done
+                    }
+                    break;
+                case 9: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.red);
 
-                            follower.followPath(side10);
-                            pathState = 10; // All Done
-                        }
-                        break;
-                    case 10: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.violet);
+                        side10 = new Path(new BezierLine(p5, p6));
+                        side10.setConstantHeadingInterpolation(0);
 
-                            side11 = new Path(new BezierLine(p6, p5));
-                            side11.setConstantHeadingInterpolation(0);
+                        follower.followPath(side10);
+                        pathState = 10; // All Done
+                    }
+                    break;
+                case 10: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.violet);
 
-                            follower.followPath(side6);
-                            pathState = 11; // All Done
-                        }
-                        break;
-                    case 11: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.orange);
+                        side11 = new Path(new BezierLine(p6, p5));
+                        side11.setConstantHeadingInterpolation(0);
 
-                            side8 = new Path(new BezierLine(p5, p0));
-                            side8.setConstantHeadingInterpolation(0);
+                        follower.followPath(side6);
+                        pathState = 11; // All Done
+                    }
+                    break;
+                case 11: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.orange);
 
-                            follower.followPath(side6);
-                            pathState = 12; // All Done
-                        }
-                        break;
-                    case 12: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.blue);
-                            pathState = 12; // All Done
-                        }
-                        break;
-                    case 99: // Waiting to finish Side 4
-                        if (!follower.isBusy()) {
-                            lights.setPosition(RGB.blue);
-                        }
-                        break;
+                        side8 = new Path(new BezierLine(p5, p0));
+                        side8.setConstantHeadingInterpolation(0);
+
+                        follower.followPath(side6);
+                        pathState = 12; // All Done
+                    }
+                    break;
+                case 12: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.blue);
+                        pathState = 12; // All Done
+                    }
+                    break;
+                case 99: // Waiting to finish Side 4
+                    if (!follower.isBusy()) {
+                        lights.setPosition(RGB.blue);
+                        Pose p = follower.getPose();
+                        Path pat = new Path(new BezierLine(p, p2));
+                        follower.followPath(pat);
+
+
+
+                    }
+                    break;
                 }
 
 
@@ -501,6 +518,14 @@ public class BlueFarTuned extends OpMode {
         // 2) SPINUP wait
         sleepMs(FLYWHEEL_SPINUP_MS);
 
+        if(gameTimer.getElapsedTimeSeconds()>28){
+            follower.breakFollowing();
+            pathState = 99;
+            stopIntakes();
+            setFlyHold(0.0);
+            return;
+        }
+
         // 3) SHOT 1: FIRE center (retry uses center sensor only)
         fireOneWithCenterOnlyRetry(flyCmd);
 
@@ -519,6 +544,14 @@ public class BlueFarTuned extends OpMode {
         }else{
             feedFrontToCenter();
 
+        }
+        if(gameTimer.getElapsedTimeSeconds()>28){
+            follower.breakFollowing();
+            pathState = 99;
+            stopIntakes();
+            setFlyHold(0.0);
+
+            return;
         }
         fireOneWithCenterOnlyRetry(flyCmd);
 
