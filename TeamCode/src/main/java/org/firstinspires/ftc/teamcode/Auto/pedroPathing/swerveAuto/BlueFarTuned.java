@@ -408,10 +408,11 @@ public class BlueFarTuned extends OpMode {
                 case 12: // Waiting to finish Side 4
                     if (!follower.isBusy()) {
                         lights.setPosition(RGB.blue);
-                        pathState = 12; // All Done
+                        pathState = 99; // All Done
                     }
                     break;
                 case 99: // Waiting to finish Side 4
+                    follower.breakFollowing();
                     if (!follower.isBusy()) {
                         lights.setPosition(RGB.blue);
                         Pose p = follower.getPose();

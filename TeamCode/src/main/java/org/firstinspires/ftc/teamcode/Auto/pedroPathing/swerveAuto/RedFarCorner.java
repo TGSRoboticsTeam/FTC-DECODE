@@ -42,7 +42,7 @@ public class RedFarCorner extends OpMode {
 
     // We use individual Paths instead of a PathChain to prevent blending
     private Path side1, side2, side3, side4,side5,side6,side7,side8,side9,side10,side11,side31,side32;
-    private Pose p0,p1,p2,p3,p4,p5,p6,p00;
+    private Pose p0,p1,p2,p3,p4,p5,p6,p00,pcorner;
 
     private int pathState = 0;
 
@@ -135,7 +135,7 @@ public class RedFarCorner extends OpMode {
 
 
         // Define Poses
-        p00 = new Pose(0, 7.5, 0); //shooting
+        p00 = new Pose(0, 6.5, 0); //shooting
         p0 = new Pose(0, 8.5, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
         p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
@@ -143,11 +143,12 @@ public class RedFarCorner extends OpMode {
         p4 = new Pose(30, -TARGET_TILE_INCHES * 2, 0);   //Through row 2
         p5 = new Pose(0, -TARGET_TILE_INCHES * 3, 0); //Front row 3
         p6 = new Pose(30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
+        pcorner = new Pose(-30, 3,0);
 
-        follower.setPose(p0);
+        follower.setStartingPose(p0);
 
         // Build individual paths with locked headings
-        side1 = new Path(new BezierLine(p0, p3));
+        side1 = new Path(new BezierLine(p0, p1));
         side1.setConstantHeadingInterpolation(0);
 
         pathState = 0;
@@ -213,7 +214,7 @@ public class RedFarCorner extends OpMode {
                 }
                 break;
             case 0: // Start Side 1
-                //turret.setServos(.65);
+                turret.setServos(.65);
                 if(firingComplete){
                     lights.setPosition(RGB.green);
                     follower.followPath(side1);
@@ -229,10 +230,12 @@ public class RedFarCorner extends OpMode {
                 }
                 break;
             case 1: // Waiting to finish Side 1
+                firingComplete = false;
+                hasFired = false;
                 if (!follower.isBusy() ) {
                     lights.setPosition(RGB.cyan);
 
-                    side2 = new Path(new BezierLine(p3, p4));
+                    side2 = new Path(new BezierLine(p1, p2));
                     side2.setConstantHeadingInterpolation(0);
 
 
@@ -241,12 +244,12 @@ public class RedFarCorner extends OpMode {
                 }
                 break;
             case 2: // Waiting to finish Side 2
-                frontIntake.setPower(.7);
+                backIntake.setPower(.7);
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);
 
-                    side3 = new Path(new BezierLine(p4, p3));
+                    side3 = new Path(new BezierLine(p2, p1));
                     side3.setConstantHeadingInterpolation(0);
 
 
@@ -263,7 +266,7 @@ public class RedFarCorner extends OpMode {
                         // follower.followPath(side4);
                         lights.setPosition(RGB.indigo);
 
-                        side31 = new Path(new BezierLine(p3, p1));
+                        side31 = new Path(new BezierLine(p1, p00));
                         side31.setConstantHeadingInterpolation(0);
 
 
@@ -273,9 +276,11 @@ public class RedFarCorner extends OpMode {
                         break;
                     case 31: // Waiting to finish Side 3
 
-                        // follower.turnTo(0);
+
                         if (!follower.isBusy() ) {
-                            // follower.followPath(side4);
+
+                            follower.turnTo(0);
+
                             lights.setPosition(RGB.white);
 
                             pathState = 32;
@@ -283,26 +288,36 @@ public class RedFarCorner extends OpMode {
                         break;
                     case 32: // Waiting to finish Side 3
 
-                        frontIntake.setPower(0.0);
 
                         if (!follower.isBusy() ) {
                             // follower.followPath(side4);
                             lights.setPosition(RGB.indigo);
-                            side4 = new Path(new BezierLine(p3, p00));
-                            side4.setConstantHeadingInterpolation(0);
+                            turret.setServos(.65);
+                            if(firingComplete){
+                                lights.setPosition(RGB.green);
+                                pathState =4;
+                            }
+                            if(!hasFired){
+                                hasFired = true;
+                                turnOnFlys(getfarPower(0.875));//.87
+                                adjuster.setPosition(0);
+
+                                fireThree(getfarPower(0.875));
+                                firingComplete=true;
+                            }
 
 
-                            follower.followPath(side4);
-                            pathState = 4;
                         }
                         break;
                     case 4: // Waiting to finish Side 4
+                        hasFired = false;
+                        firingComplete = false;
 
                         if (!follower.isBusy()) {
-                            fireThree(getfarPower(0.875));
+
                             lights.setPosition(RGB.orange);
 
-                            side5 = new Path(new BezierLine(p00, p1));
+                            side5 = new Path(new BezierLine(p00, pcorner));
                             side5.setConstantHeadingInterpolation(0);
 
                             follower.followPath(side5);
@@ -310,10 +325,12 @@ public class RedFarCorner extends OpMode {
                         }
                         break;
                     case 5: // Waiting to finish Side 4
+
+
                         if (!follower.isBusy()) {
                             lights.setPosition(RGB.red);
 
-                            side6 = new Path(new BezierLine(p1, p2));
+                            side6 = new Path(new BezierLine(pcorner, p00));
                             side6.setConstantHeadingInterpolation(0);
 
                             follower.followPath(side6);
@@ -321,23 +338,35 @@ public class RedFarCorner extends OpMode {
                         }
                         break;
                     case 6: // Waiting to finish Side 4
+
+
                         if (!follower.isBusy()) {
                             lights.setPosition(RGB.red);
-                            side7 = new Path(new BezierLine(p2, p1));
-                            side7.setConstantHeadingInterpolation(0);
+                            turret.setServos(.65);
+                            if(firingComplete){
+                                lights.setPosition(RGB.green);
 
-                            follower.followPath(side7);
-                            pathState = 7; // All Done
+                                pathState =7;
+                            }
+                            if(!hasFired){
+                                hasFired = true;
+                                turnOnFlys(getfarPower(0.875));//.87
+                                adjuster.setPosition(0);
+
+                                fireThree(getfarPower(0.875));
+                                firingComplete=true;
+                            }
+
                         }
                         break;
                     case 7: // Waiting to finish Side 4
                         if (!follower.isBusy()) {
                             lights.setPosition(RGB.red);
-                            side8 = new Path(new BezierLine(p1, p00));
+                            side8 = new Path(new BezierLine(p00, p2));
                             side8.setConstantHeadingInterpolation(0);
 
                             follower.followPath(side8);
-                            pathState = 8; // All Done
+                            pathState = 99; // All Done
                         }
                         break;
                     case 8: // Waiting to finish Side 4
