@@ -137,6 +137,12 @@ public class TurretMechanism {
         }
 
     }
+    public double getScroll(){
+        return scroll;
+    }
+    public void resetScroll(){
+        scroll = 0.65;
+    }
     public boolean updateUntil(AprilTagDetection curID) {
         // Safety: If no tag is seen, do nothing (or return to center if preferred)
         if (curID == null) {
