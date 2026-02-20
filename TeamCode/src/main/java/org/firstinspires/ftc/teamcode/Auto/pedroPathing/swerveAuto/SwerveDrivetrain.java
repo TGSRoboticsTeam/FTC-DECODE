@@ -216,26 +216,30 @@ public class SwerveDrivetrain extends Drivetrain {
         double headingError = MathFunctions.getTurnDirection(currentHeading, targetHeading);
 
         // 2. P-Controller: Adjust 0.85 if the robot oscillates (lower it) or is too slow (raise it)
-        double kP = 0.85;
+        double kP = 0.40;
         double turnPower = headingError * kP;
 
         // 3. Check for completion (within ~1.5 degrees)
-        if (Math.abs(headingError) < Math.toRadians(1.5)) {
+        if (Math.abs(headingError) < Math.toRadians(7)) {
             this.breakFollowing(); // Zeroes motors
+            return true;
+        }
+        if(Math.abs((currentHeading-targetHeading))<Math.toRadians(10)){
+            this.breakFollowing();
             return true;
         }
 
         // 4. Set Diamond/X-Pattern Angles (Radians)
         // Points wheels perpendicular to center for maximum leverage
-        double flAngle = Math.toRadians(45);
-        double frAngle = Math.toRadians(135);
-        double blAngle = Math.toRadians(-45);
-        double brAngle = Math.toRadians(-135);
+        double flAngle = Math.toRadians(135);
+        double frAngle = Math.toRadians(45);
+        double blAngle = Math.toRadians(-135);
+        double brAngle = Math.toRadians(-45);
 
         // 5. Apply power.
         // Right side is inverted (-turnPower) to create rotation around the center.
-        runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, turnPower, flAngle);
-        runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, -turnPower, frAngle);
+        runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, -turnPower, flAngle);
+        runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, turnPower, frAngle);
         runModule(blDrive, blSteer, blEnc, BACK_LEFT_OFFSET, turnPower, blAngle);
         runModule(brDrive, brSteer, brEnc, BACK_RIGHT_OFFSET, -turnPower, brAngle);
 

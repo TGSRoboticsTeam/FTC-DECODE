@@ -77,7 +77,9 @@ public class RandoCode extends OpMode {
     public Timer timer;
     public Timer gameTimer;
 
-
+    // Add this as a global variable in your Auto class
+    private Timer settleTimer = new Timer();
+    private boolean centering = false;
 
 
 
@@ -217,9 +219,11 @@ public class RandoCode extends OpMode {
 
     }
 
-
+    private int mcount=0;
     @Override
     public void loop() {
+
+
         if(gameTimer.getElapsedTimeSeconds()>28){
             follower.breakFollowing();
             pathState = 99;
@@ -228,6 +232,7 @@ public class RandoCode extends OpMode {
         follower.update();
         Pose currentPose = follower.getPose();
 
+
         if(currentPose.getHeading()>.5){
             lights.setPosition(RGB.white);
            // follower.breakFollowing();
@@ -235,7 +240,7 @@ public class RandoCode extends OpMode {
         }
 
         switch (pathState) {
-            case -3:
+            case -7:
                 lights.setPosition(RGB.orange);
                 // 1. Stop any active PedroPathing movement
                 follower.breakFollowing();
@@ -243,16 +248,49 @@ public class RandoCode extends OpMode {
                 // 2. Access your custom drivetrain method
                 SwerveDrivetrain drive = (SwerveDrivetrain) follower.getDrivetrain();
 
+
                 // 3. Call the correction logic (Target 0 degrees)
                 boolean isAligned = drive.forceHeadingCorrection(0.0, follower.getPose().getHeading());
-
-                // 4. Transition once the robot is straight
+                lights.setPosition(RGB.red);
+                // ONLY break following if we just got here
+                if (follower.isBusy()) {
+                    follower.breakFollowing();
+                }
+;                // 4. Transition once the robot is straight
                 if (isAligned) {
-                    pathState = 32;
+
+                    lights.setPosition(RGB.green);
+                    pathState = -5;
                     // Optional: Reset the follower's internal heading to exactly 0 to clear drift
-                    follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
+                   // follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
                 }
 
+                break;
+
+
+// Inside your switch block
+            case -3:
+
+                SwerveDrivetrain adrive = (SwerveDrivetrain) follower.getDrivetrain();
+                boolean isAlignedb = adrive.forceHeadingCorrection(0.0, follower.getPose().getHeading());
+                telemetry.addLine("READING: "+follower.getPose().getHeading()+"     "+mcount);
+                mcount++;
+                if (isAlignedb) {
+                    if (!centering) {
+                        settleTimer.resetTimer();
+                        centering = true;
+                    }
+                    lights.setPosition(RGB.green);
+
+                    // Only transition if we stay green for 150ms
+                    if (settleTimer.getElapsedTime() > 150) {
+                        adrive.breakFollowing();
+                        pathState = -5;
+                    }
+                } else {
+                    centering = false;
+                    lights.setPosition(RGB.red);
+                }
                 break;
             case -2:
 
@@ -299,7 +337,8 @@ public class RandoCode extends OpMode {
                     frontIntake.setPower(0);
                 }
                 break;
-            case 1: // Waiting to finish Side 1
+            case 1: // Waiting to finish first path, then start second path
+                frontIntake.setPower(.65);
                 if (!follower.isBusy() ) {
                     lights.setPosition(RGB.cyan);
 
@@ -311,7 +350,7 @@ public class RandoCode extends OpMode {
                     pathState = 2;
                 }
                 break;
-            case 2: // Waiting to finish Side 2
+            case 2: // Waiting to finish path 2 starting path 3(pickup row)
                 frontIntake.setPower(.65);
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
@@ -325,7 +364,7 @@ public class RandoCode extends OpMode {
                     pathState = 3;
                 }
                 break;
-            case 3: // Waiting to finish Side 3
+            case 3: //finishing path 2(Could use to hit gate
 
                 frontIntake.setPower(0.0);
                 backIntake.setPower(0.0);
@@ -342,7 +381,7 @@ public class RandoCode extends OpMode {
                     pathState = 31;
                 }
                 break;
-            case 31: // Waiting to finish Side 3
+            case 31: // correction step
                 // 1. Stop any active PedroPathing movement
                 follower.breakFollowing();
 
@@ -375,7 +414,7 @@ public class RandoCode extends OpMode {
                     pathState = 4;
                 }
                 break;
-            case 4: // Waiting to finish Side 4
+            case 4: // Fire again - Second Fire
 
                 if (!follower.isBusy()) {
                     timer.resetTimer();
