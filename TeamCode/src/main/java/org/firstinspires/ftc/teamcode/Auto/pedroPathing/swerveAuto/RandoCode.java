@@ -141,7 +141,8 @@ public class RandoCode extends OpMode {
         initMechanisms();
         turret = new TurretMechanism();
         aprilTagWebcam.init(hardwareMap, telemetry);
-        turret.init(hardwareMap,telemetry,20);
+        turret.init(hardwareMap,telemetry,20); //Blue is 20, red is 24  *Change for Red
+
 
 
         follower = SwerveConstants.createFollower(hardwareMap);
@@ -164,7 +165,7 @@ public class RandoCode extends OpMode {
         side1 = new Path(new BezierLine(p0, p1));
         side1.setConstantHeadingInterpolation(0);
 
-        pathState = -1;
+        pathState = -3;
 
         telemetry.addData("Status", "Swerve Follower Initialized");
         telemetry.addData("Path State", pathState);
@@ -217,7 +218,6 @@ public class RandoCode extends OpMode {
     }
 
 
-
     @Override
     public void loop() {
         if(gameTimer.getElapsedTimeSeconds()>28){
@@ -236,25 +236,33 @@ public class RandoCode extends OpMode {
 
         switch (pathState) {
             case -3:
-             while(!turret.updateUntil(targetID)){
-                 aprilTagWebcam.update();
-                 targetID = aprilTagWebcam.getTagBySpecificId(20);//blue
-                 telemetry.addLine(" "+turret.getScroll());
-                 telemetry.update();
+                lights.setPosition(RGB.orange);
+                // 1. Stop any active PedroPathing movement
+                follower.breakFollowing();
 
-                };
+                // 2. Access your custom drivetrain method
+                SwerveDrivetrain drive = (SwerveDrivetrain) follower.getDrivetrain();
+
+                // 3. Call the correction logic (Target 0 degrees)
+                boolean isAligned = drive.forceHeadingCorrection(0.0, follower.getPose().getHeading());
+
+                // 4. Transition once the robot is straight
+                if (isAligned) {
+                    pathState = 32;
+                    // Optional: Reset the follower's internal heading to exactly 0 to clear drift
+                    follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
+                }
+
                 break;
             case -2:
-                Pose now = new Pose(currentPose.getX(), currentPose.getY(), Math.toRadians(90));
-                Pose here = new Pose(currentPose.getX(), currentPose.getY(), currentPose.getHeading());
 
-                follower.followPath(new Path(new BezierLine(here, now)));
-
-                pathState = -1;
-                if(hasBall()>=0){
+                if (!follower.isBusy() ) {
                     lights.setPosition(RGB.white);
-                    pathState = -1;
-                };
+                }
+
+
+
+
                 break;
             case -1:
                // boolean complete = turret.updateUntil(targetID);
@@ -266,7 +274,7 @@ public class RandoCode extends OpMode {
               //      pathState = 0;
               //  }
                 break;
-            case 0: // Start Side 1
+            case 0: // First Fire
                 turret.setServos(.65);
                 if(firingComplete){
                     lights.setPosition(RGB.green);
@@ -335,15 +343,23 @@ public class RandoCode extends OpMode {
                 }
                 break;
             case 31: // Waiting to finish Side 3
-                //follower.setHeading(0);
-                // follower.turnTo(0);
-                if (!follower.isBusy() ) {
-                    // follower.followPath(side4);
-                    lights.setPosition(RGB.white);
+                // 1. Stop any active PedroPathing movement
+                follower.breakFollowing();
 
+                // 2. Access your custom drivetrain method
+                SwerveDrivetrain rDrive = (SwerveDrivetrain) follower.getDrivetrain();
+
+                // 3. Call the correction logic (Target 0 degrees)
+                boolean isAlignedAngle = rDrive.forceHeadingCorrection(0.0, follower.getPose().getHeading());
+
+                // 4. Transition once the robot is straight
+                if (isAlignedAngle) {
                     pathState = 32;
+                    // Optional: Reset the follower's internal heading to exactly 0 to clear drift
+                    follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
                 }
                 break;
+
             case 32: // Waiting to finish Side 3
 
                 frontIntake.setPower(0.0);
@@ -408,7 +424,7 @@ public class RandoCode extends OpMode {
                     side6 = new Path(new BezierLine(p00, pc));
                     side6.setConstantHeadingInterpolation(0);
 
-
+                    frontIntake.setPower(.65);
                     follower.followPath(side6);
                     timer.resetTimer();
                     pathState = 6;
@@ -419,11 +435,12 @@ public class RandoCode extends OpMode {
                  //if(timer.getElapsedTimeSeconds()>2){
                //      follower.breakFollowing();
                //  }
-                frontIntake.setPower(.65);
+
 
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);
+                    frontIntake.setPower(0.0);
 
                     side7 = new Path(new BezierLine(pc, p00));
                     side7.setConstantHeadingInterpolation(0);
@@ -444,7 +461,7 @@ public class RandoCode extends OpMode {
                     turret.resetScroll();;
                     while (!turret.updateUntil(targetID)) {
                         aprilTagWebcam.update();
-                        if (timer.getElapsedTimeSeconds() > 3) {
+                        if ((timer.getElapsedTimeSeconds() > 3)||(gameTimer.getElapsedTimeSeconds()>28)) {
                             break;
                         }
                     }

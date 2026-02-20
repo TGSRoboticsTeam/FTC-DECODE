@@ -204,6 +204,44 @@ public class SwerveDrivetrain extends Drivetrain {
         blSteer.setPower(0); brSteer.setPower(0);
     }
 
+    /**
+     * Forces swerve modules into a "Diamond" configuration and rotates
+     * to a target heading, bypassing standard pathing.
+     * @param targetHeading The target heading in radians.
+     * @param currentHeading The current robot heading from the localizer.
+     * @return true if the robot is within 1.5 degrees of target.
+     */
+    public boolean forceHeadingCorrection(double targetHeading, double currentHeading) {
+        // 1. Calculate the shortest turn direction
+        double headingError = MathFunctions.getTurnDirection(currentHeading, targetHeading);
+
+        // 2. P-Controller: Adjust 0.85 if the robot oscillates (lower it) or is too slow (raise it)
+        double kP = 0.85;
+        double turnPower = headingError * kP;
+
+        // 3. Check for completion (within ~1.5 degrees)
+        if (Math.abs(headingError) < Math.toRadians(1.5)) {
+            this.breakFollowing(); // Zeroes motors
+            return true;
+        }
+
+        // 4. Set Diamond/X-Pattern Angles (Radians)
+        // Points wheels perpendicular to center for maximum leverage
+        double flAngle = Math.toRadians(45);
+        double frAngle = Math.toRadians(135);
+        double blAngle = Math.toRadians(-45);
+        double brAngle = Math.toRadians(-135);
+
+        // 5. Apply power.
+        // Right side is inverted (-turnPower) to create rotation around the center.
+        runModule(flDrive, flSteer, flEnc, FRONT_LEFT_OFFSET, turnPower, flAngle);
+        runModule(frDrive, frSteer, frEnc, FRONT_RIGHT_OFFSET, -turnPower, frAngle);
+        runModule(blDrive, blSteer, blEnc, BACK_LEFT_OFFSET, turnPower, blAngle);
+        runModule(brDrive, brSteer, brEnc, BACK_RIGHT_OFFSET, -turnPower, brAngle);
+
+        return false;
+    }
+
     @Override
     public void startTeleopDrive() { startTeleopDrive(true); }
 
