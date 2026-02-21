@@ -47,6 +47,8 @@ public class deepFriedPotato extends LinearOpMode {
     // >>> LIGHT SERVO (config name: "lights") <<<
     private Servo light;
 
+    private double turretPosition = 0.5;
+
     /* ===================== LIGHT SERVO POSITIONS ===================== */
     private static final double LIGHT_NO_TAG     = 0.0;
     private static final double LIGHT_TAG_SEEN   = 0.388;
@@ -396,7 +398,7 @@ public class deepFriedPotato extends LinearOpMode {
         double yawDeg0 = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
         turretDeg = 135.0;
         turretWorldDeg = yawDeg0 + turretDeg;
-        setTurretServosFromTurretDeg();
+        //setTurretServosFromTurretDeg();
 
         // Adjuster init
         adjusterPos = lastKnownAdjusterPos;
@@ -540,9 +542,15 @@ public class deepFriedPotato extends LinearOpMode {
             turretCenterPrev = centerBtn;
 
             /* ===================== TURRET MANUAL INPUT (still stabilizes) ===================== */
-            double rawInputT = -gamepad2.right_stick_x;
-            if (Math.abs(rawInputT) < TURRET_INPUT_DEADBAND) rawInputT = 0.0;
-            turretSmoothedInput = turretSmoothedInput + TURRET_SMOOTHING * (rawInputT - turretSmoothedInput);
+            double turretMoveInput = (-gamepad2.right_stick_x) + (-gamepad2.left_stick_x * 0.5);
+            if (Math.abs(turretMoveInput) < 0.8) {
+                turretMoveInput  = 0.0;
+            }
+            turretPosition += turretMoveInput;
+            turretRotation1.setPosition(turretPosition);
+            turretRotation2.setPosition(1.0 - turretPosition);
+            //if (Math.abs(rawInputT) < TURRET_INPUT_DEADBAND) rawInputT = 0.0;
+            //turretSmoothedInput = turretSmoothedInput + TURRET_SMOOTHING * (rawInputT - turretSmoothedInput);
 
             double manualDps = gamepad2.right_bumper ? MANUAL_TURRET_DPS_SLOW : MANUAL_TURRET_DPS_FAST;
             turretWorldDeg += turretSmoothedInput * manualDps * dt;
@@ -550,7 +558,7 @@ public class deepFriedPotato extends LinearOpMode {
             double yawDeg = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
             double desiredTurretDeg = turretWorldDeg - yawDeg;
             turretDeg = clamp(desiredTurretDeg, 0.0, TURRET_RANGE_DEG);
-            setTurretServosFromTurretDeg();
+            //setTurretServosFromTurretDeg();
 
             /* ===================== SIDE SORT MANUAL (GP2 dpad left/right) when NOT launching ===================== */
             if (launchState == LaunchState.IDLE) {

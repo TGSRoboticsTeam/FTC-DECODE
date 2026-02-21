@@ -179,7 +179,7 @@ public class RandoCode extends OpMode {
     public void init_loop() {
 
         aprilTagWebcam.update();
-        AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);//red
+       // AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);//red
         AprilTagDetection id23 = aprilTagWebcam.getTagBySpecificId(23);//purple
         AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);//orange
         AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);//green
@@ -209,12 +209,12 @@ public class RandoCode extends OpMode {
             lights.setPosition(RGB.blue);
 
         }
-        else if(id24!=null){
+       /* else if(id24!=null){
             telemetry.addLine("Only Red Detected");
             ballOrder = 21;
             lights.setPosition(RGB.red);
 
-        }
+        }*/
         telemetry.update();
 
     }
@@ -313,7 +313,7 @@ public class RandoCode extends OpMode {
               //  }
                 break;
             case 0: // First Fire
-                turret.setServos(.65);
+                turret.setServos(.6);
                 if(firingComplete){
                     lights.setPosition(RGB.green);
                     follower.followPath(side1);

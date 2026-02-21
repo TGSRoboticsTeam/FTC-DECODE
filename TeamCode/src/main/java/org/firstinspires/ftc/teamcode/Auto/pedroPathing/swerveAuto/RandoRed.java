@@ -313,7 +313,7 @@ public class RandoRed extends OpMode {
                 //  }
                 break;
             case 0: // First Fire
-                turret.setServos(.45);
+                turret.setServos(.48);
                 if(firingComplete){
                     lights.setPosition(RGB.green);
                     follower.followPath(side1);
@@ -339,20 +339,34 @@ public class RandoRed extends OpMode {
                 }
                 break;
             case 1: // Waiting to finish first path, then start second path
-                backIntake.setPower(.65);
+                backIntake.setPower(-.65);
                 if (!follower.isBusy() ) {
                     lights.setPosition(RGB.cyan);
 
                     side2 = new Path(new BezierLine(p1, p2));
                     side2.setConstantHeadingInterpolation(0);
-
-
                     follower.followPath(side2);
-                    pathState = 2;
+
+
+                    // 2. Access your custom drivetrain method
+                    SwerveDrivetrain rDrive = (SwerveDrivetrain) follower.getDrivetrain();
+
+                    // 3. Call the correction logic (Target 0 degrees)
+                    boolean isAlignedAngle = rDrive.forceHeadingCorrection(0.0, follower.getPose().getHeading());
+
+                    // 4. Transition once the robot is straight
+                    if (isAlignedAngle) {
+                        pathState = 2;
+                        // Optional: Reset the follower's internal heading to exactly 0 to clear drift
+                        follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
+                    }
+                    break;
+
+
                 }
                 break;
             case 2: // Waiting to finish path 2 starting path 3(pickup row)
-                backIntake.setPower(.65);
+                backIntake.setPower(-.65);
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);

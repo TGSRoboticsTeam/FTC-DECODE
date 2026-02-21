@@ -49,7 +49,7 @@ public class AprilTagWebcam {
         visionPortal = builder.build();
         // It's crucial to wait for the camera to be ready before trying to adjust settings.
 
-        setManualExposure(2, 60);
+        setManualExposure(2, 80);
     }
 
     private void setManualExposure(int exposureMS, int gain) {
