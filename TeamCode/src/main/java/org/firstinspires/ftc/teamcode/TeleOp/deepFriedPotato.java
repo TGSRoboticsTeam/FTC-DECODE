@@ -542,11 +542,15 @@ public class deepFriedPotato extends LinearOpMode {
             turretCenterPrev = centerBtn;
 
             /* ===================== TURRET MANUAL INPUT (still stabilizes) ===================== */
-            double turretMoveInput = (-gamepad2.right_stick_x) + (-gamepad2.left_stick_x * 0.5);
-            if (Math.abs(turretMoveInput) < 0.8) {
-                turretMoveInput  = 0.0;
+            if (Math.abs(-gamepad2.right_stick_x) < 0.95) {
+                turretPosition += Math.signum(-gamepad2.right_stick_x) * 0.15;
             }
-            turretPosition += turretMoveInput;
+            if (gamepad2.dpad_left) {
+                turretPosition += 0.04;
+            }
+            if (gamepad2.dpad_right) {
+                turretPosition -= 0.04;
+            }
             turretRotation1.setPosition(turretPosition);
             turretRotation2.setPosition(1.0 - turretPosition);
             //if (Math.abs(rawInputT) < TURRET_INPUT_DEADBAND) rawInputT = 0.0;
@@ -561,7 +565,9 @@ public class deepFriedPotato extends LinearOpMode {
             //setTurretServosFromTurretDeg();
 
             /* ===================== SIDE SORT MANUAL (GP2 dpad left/right) when NOT launching ===================== */
+            /*
             if (launchState == LaunchState.IDLE) {
+            /*
                 if (gamepad2.dpad_left) {
                     sideSortPos = clamp(sideSortPos - SIDE_SORT_JOG_STEP, 0.0, 1.0);
                     if (sideSort != null) sideSort.setPosition(sideSortPos);
@@ -570,6 +576,7 @@ public class deepFriedPotato extends LinearOpMode {
                     if (sideSort != null) sideSort.setPosition(sideSortPos);
                 }
             }
+             */
 
             /* ===================== PRE-SPIN TOGGLE (GP1 LT tap) ===================== */
             boolean ltNow = (gamepad1.left_trigger > 0.5);

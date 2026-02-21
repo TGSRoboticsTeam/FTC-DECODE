@@ -28,8 +28,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 
 import com.pedropathing.util.Timer;
 
-@Autonomous(name = "RandoCode", group = "Testing")
-public class RandoCode extends OpMode {
+@Autonomous(name = "Shoot3Corner", group = "Testing")
+public class Shoot3Corner extends OpMode {
     private Follower follower;
 
 
@@ -143,7 +143,7 @@ public class RandoCode extends OpMode {
         initMechanisms();
         turret = new TurretMechanism();
         aprilTagWebcam.init(hardwareMap, telemetry);
-        turret.init(hardwareMap,telemetry,20); //Blue is 20, red is 24  *Change for Red
+        turret.init(hardwareMap,telemetry,24); //Blue is 20, red is 24  *Change for Red
 
 
 
@@ -154,17 +154,17 @@ public class RandoCode extends OpMode {
         p00 = new Pose(-5, -3.5, 0); //shooting
         p0 = new Pose(0, -8.5, 0);
         p1 = new Pose(0, -TARGET_TILE_INCHES, 0);//In front of row 1
-        p2 = new Pose(30, -TARGET_TILE_INCHES, 0); //Through row 1
+        p2 = new Pose(-30, -TARGET_TILE_INCHES, 0); //Through row 1
         p3 = new Pose(0, -TARGET_TILE_INCHES * 2, 0); //Front row 2
-        p4 = new Pose(30, -TARGET_TILE_INCHES * 2, 0);   //Through row 2
+        p4 = new Pose(-30, -TARGET_TILE_INCHES * 2, 0);   //Through row 2
         p5 = new Pose(0, -TARGET_TILE_INCHES * 3, 0); //Front row 3
-        p6 = new Pose(30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
-        pc = new Pose(30, -8.5, 0); //clean corner
+        p6 = new Pose(-30, -TARGET_TILE_INCHES * 3, 0);//Through row 3
+        pc = new Pose(-30, -8.5, 0); //clean corner
 
         follower.setStartingPose(p0);
 
         // Build individual paths with locked headings
-        side1 = new Path(new BezierLine(p0, p1));
+        side1 = new Path(new BezierLine(p0, pc));
         side1.setConstantHeadingInterpolation(0);
 
         pathState = -3;
@@ -179,12 +179,12 @@ public class RandoCode extends OpMode {
     public void init_loop() {
 
         aprilTagWebcam.update();
-       // AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);//red
+        AprilTagDetection id24 = aprilTagWebcam.getTagBySpecificId(24);//red
         AprilTagDetection id23 = aprilTagWebcam.getTagBySpecificId(23);//purple
         AprilTagDetection id22 = aprilTagWebcam.getTagBySpecificId(22);//orange
         AprilTagDetection id21 = aprilTagWebcam.getTagBySpecificId(21);//green
         AprilTagDetection id20 = aprilTagWebcam.getTagBySpecificId(20);//blue
-        targetID = id20;
+        targetID = id24;
 
         gameTimer.resetTimer();
 
@@ -193,7 +193,7 @@ public class RandoCode extends OpMode {
             ballOrder=21;
             lights.setPosition(RGB.green);
         }
-       else  if(id22 != null){
+        else  if(id22 != null){
             telemetry.addLine("Tag 22 Detected");
             ballOrder=22;
             lights.setPosition(RGB.orange);
@@ -209,12 +209,12 @@ public class RandoCode extends OpMode {
             lights.setPosition(RGB.blue);
 
         }
-       /* else if(id24!=null){
+        else if(id24!=null){
             telemetry.addLine("Only Red Detected");
             ballOrder = 21;
             lights.setPosition(RGB.red);
 
-        }*/
+        }
         telemetry.update();
 
     }
@@ -235,7 +235,7 @@ public class RandoCode extends OpMode {
 
         if(currentPose.getHeading()>.5){
             lights.setPosition(RGB.white);
-           // follower.breakFollowing();
+            // follower.breakFollowing();
             //follower.setTeleOpDrive(0,0,Math.toRadians(10));
         }
 
@@ -256,13 +256,13 @@ public class RandoCode extends OpMode {
                 if (follower.isBusy()) {
                     follower.breakFollowing();
                 }
-;                // 4. Transition once the robot is straight
+                ;                // 4. Transition once the robot is straight
                 if (isAligned) {
 
                     lights.setPosition(RGB.green);
                     pathState = 0;
                     // Optional: Reset the follower's internal heading to exactly 0 to clear drift
-                   // follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
+                    // follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
                 }
 
                 break;
@@ -303,17 +303,17 @@ public class RandoCode extends OpMode {
 
                 break;
             case -1:
-               // boolean complete = turret.updateUntil(targetID);
+                // boolean complete = turret.updateUntil(targetID);
                 if (!follower.isBusy() ) {
                     pathState=0;
                 }
                 //complete = true;
-              //  if(complete){
-              //      pathState = 0;
-              //  }
+                //  if(complete){
+                //      pathState = 0;
+                //  }
                 break;
             case 0: // First Fire
-                turret.setServos(.64);
+                turret.setServos(.48);
                 if(firingComplete){
                     lights.setPosition(RGB.green);
                     follower.followPath(side1);
@@ -326,6 +326,7 @@ public class RandoCode extends OpMode {
 
                     fireThree(getfarPower(0.75));
                     firingComplete=true;
+
                 }
                 if(hasBall()>0){
                     frontIntake.setPower(-.5);
@@ -338,20 +339,34 @@ public class RandoCode extends OpMode {
                 }
                 break;
             case 1: // Waiting to finish first path, then start second path
-                frontIntake.setPower(.65);
+
                 if (!follower.isBusy() ) {
                     lights.setPosition(RGB.cyan);
 
                     side2 = new Path(new BezierLine(p1, p2));
                     side2.setConstantHeadingInterpolation(0);
-
-
                     follower.followPath(side2);
-                    pathState = 2;
+
+
+                    // 2. Access your custom drivetrain method
+                    SwerveDrivetrain rDrive = (SwerveDrivetrain) follower.getDrivetrain();
+
+                    // 3. Call the correction logic (Target 0 degrees)
+                    boolean isAlignedAngle = rDrive.forceHeadingCorrection(0.0, follower.getPose().getHeading());
+
+                    // 4. Transition once the robot is straight
+                    if (isAlignedAngle) {
+                        pathState = 2;
+                        // Optional: Reset the follower's internal heading to exactly 0 to clear drift
+                        follower.setPose(new Pose(follower.getPose().getX(), follower.getPose().getY(), 0));
+                    }
+                    break;
+
+
                 }
                 break;
             case 2: // Waiting to finish path 2 starting path 3(pickup row)
-                frontIntake.setPower(.65);
+                backIntake.setPower(-.65);
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);
@@ -377,7 +392,7 @@ public class RandoCode extends OpMode {
                     //side31.setConstantHeadingInterpolation(0);
 
 
-                   // follower.followPath(side31);
+                    // follower.followPath(side31);
                     pathState = 31;
                 }
                 break;
@@ -401,7 +416,7 @@ public class RandoCode extends OpMode {
 
             case 32: // Waiting to finish Side 3
 
-                frontIntake.setPower(0.0);
+                backIntake.setPower(0.0);
 
                 if (!follower.isBusy() ) {
                     // follower.followPath(side4);
@@ -418,29 +433,28 @@ public class RandoCode extends OpMode {
 
                 if (!follower.isBusy()) {
                     timer.resetTimer();
-                    turret.setServos(0.65);
+                    turret.setServos(-0.65);
 
                     aprilTagWebcam.update();
-                    targetID = aprilTagWebcam.getTagBySpecificId(20);//blue
+                    targetID = aprilTagWebcam.getTagBySpecificId(24);//blue
 
                     while(!turret.updateUntil(targetID)){
 
                         aprilTagWebcam.update();
-                        targetID = aprilTagWebcam.getTagBySpecificId(20);//blue
+                        targetID = aprilTagWebcam.getTagBySpecificId(24);//blue
 
                         if(timer.getElapsedTimeSeconds()>3){
-                            turret.setServos(.6);
                             break;
                         }
                     }
-                    fireThree(getfarPower(0.8));
+                    fireThree(getfarPower(0.75));
                     if(hasBall()>0){
-                        fireThree(getfarPower(0.8));
+                        fireThree(getfarPower(0.75));
                     }
                     timer.resetTimer();
                     lights.setPosition(RGB.orange);
 
-                   // follower.followPath(side5);
+                    // follower.followPath(side5);
                     pathState = 42; // All Done
                 }
                 break;
@@ -450,8 +464,8 @@ public class RandoCode extends OpMode {
                 }
                 follower.setPose(p00);
                 if (!follower.isBusy()) {
-                   // side5 = new Path(new BezierLine(p1, p00));
-                  //  side5.setConstantHeadingInterpolation(0);
+                    // side5 = new Path(new BezierLine(p1, p00));
+                    //  side5.setConstantHeadingInterpolation(0);
 
                     pathState = 5;
                 }
@@ -464,7 +478,7 @@ public class RandoCode extends OpMode {
                     side6 = new Path(new BezierLine(p00, pc));
                     side6.setConstantHeadingInterpolation(0);
 
-                    frontIntake.setPower(.65);
+                    backIntake.setPower(.65);
                     follower.followPath(side6);
                     timer.resetTimer();
                     pathState = 6;
@@ -472,15 +486,15 @@ public class RandoCode extends OpMode {
                 break;
 
             case 6: // Waiting to finish Side 2
-                 //if(timer.getElapsedTimeSeconds()>2){
-               //      follower.breakFollowing();
-               //  }
+                //if(timer.getElapsedTimeSeconds()>2){
+                //      follower.breakFollowing();
+                //  }
 
 
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);
-                    frontIntake.setPower(0.0);
+                    backIntake.setPower(0.0);
 
                     side7 = new Path(new BezierLine(pc, p00));
                     side7.setConstantHeadingInterpolation(0);
@@ -508,10 +522,10 @@ public class RandoCode extends OpMode {
 
                     if (!hasFired) {
                         hasFired = true;
-                        turnOnFlys(getfarPower(0.75));//.87
+                        turnOnFlys(getfarPower(0.8));//.87
                         adjuster.setPosition(0);
 
-                        fireThree(getfarPower(0.75));
+                        fireThree(getfarPower(0.8));
                         firingComplete = true;
                     }
                 }
@@ -529,7 +543,7 @@ public class RandoCode extends OpMode {
                 }
                 break;
             case 9: // Waiting to finish Side 2
-                frontIntake.setPower(.65);
+                backIntake.setPower(.65);
                 if (!follower.isBusy()) {
                     //follower.followPath(side3);
                     lights.setPosition(RGB.blue);
@@ -551,10 +565,10 @@ public class RandoCode extends OpMode {
                 }
                 if(!hasFired){
                     hasFired = true;
-                    turnOnFlys(getfarPower(075));//.87
+                    turnOnFlys(getfarPower(0.8));//.87
                     adjuster.setPosition(0);
 
-                    fireThree(getfarPower(0.75));
+                    fireThree(getfarPower(0.8));
                     firingComplete=true;
                 }
                 follower.breakFollowing();
